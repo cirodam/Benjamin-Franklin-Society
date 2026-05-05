@@ -16,6 +16,9 @@ export interface ActionAuthority {
     readonly action:      string;
     readonly body:        GovernanceBody;
     readonly description: string;
+    /** The vote rule that must be applied to motions of this action type.
+     *  Must be a key from the VOTE_RULES registry in @ecf/core. */
+    readonly voteRuleId:  string;
 }
 
 export interface ConstitutionalParameter<T extends number | boolean> {
@@ -252,20 +255,25 @@ export const DEFAULT_CONSTITUTION: ConstitutionDocument = {
     amendments: [],
     articles: [],   // populated below after DEFAULT_ARTICLES is declared
     authorityMap: [
-        { action: "admit-member",            body: "assembly",   description: "Admitting a new member to the community" },
-        { action: "suspend-member",          body: "assembly",   description: "Suspending a member pending review" },
-        { action: "exclude-member",          body: "referendum", description: "Permanently excluding a member" },
-        { action: "change-dues-rate",         body: "referendum", description: "Changing the community dues rate" },
-        { action: "change-demurrage-rate",   body: "referendum", description: "Changing the bank demurrage rate" },
-        { action: "change-demurrage-floor",  body: "referendum", description: "Changing the demurrage-free balance floor" },
-        { action: "amend-constitution",      body: "referendum", description: "Amending the constitution" },
-        { action: "join-federation",         body: "referendum", description: "Joining a federation" },
-        { action: "leave-federation",        body: "referendum", description: "Leaving a federation" },
-        { action: "split-council",           body: "assembly",   description: "Splitting a multi-domain council into two" },
-        { action: "allocate-domain-budget",  body: "assembly",   description: "Setting budget envelopes for domains" },
-        { action: "declare-domain-emergency",body: "council",    description: "Declaring a domain emergency (assembly ratifies within 72h)" },
-        { action: "change-market-schedule",  body: "council",    description: "Changing market day schedule" },
-        { action: "enact-domain-statute",    body: "council",    description: "Enacting an operating rule within a domain" },
+        // Membership
+        { action: "admit-member",             body: "assembly",   voteRuleId: "petition",                  description: "Admitting a new member — requires a petition reaching the signature threshold" },
+        { action: "suspend-member",           body: "assembly",   voteRuleId: "assembly-general",          description: "Suspending a member pending review — simple majority of the assembly" },
+        { action: "exclude-member",           body: "referendum", voteRuleId: "referendum-constitutional", description: "Permanently excluding a member — requires 2/3 of all members" },
+        // Monetary policy
+        { action: "change-dues-rate",         body: "referendum", voteRuleId: "referendum-general",        description: "Changing the community dues rate — majority of all members" },
+        { action: "change-demurrage-rate",    body: "referendum", voteRuleId: "referendum-general",        description: "Changing the bank demurrage rate — majority of all members" },
+        { action: "change-demurrage-floor",   body: "referendum", voteRuleId: "referendum-general",        description: "Changing the demurrage-free balance floor — majority of all members" },
+        // Constitution
+        { action: "amend-constitution",       body: "referendum", voteRuleId: "referendum-constitutional", description: "Amending the constitution — requires 2/3 of all members" },
+        // Federation
+        { action: "join-federation",          body: "referendum", voteRuleId: "referendum-constitutional", description: "Joining a federation — requires 2/3 of all members" },
+        { action: "leave-federation",         body: "referendum", voteRuleId: "referendum-constitutional", description: "Leaving a federation — requires 2/3 of all members" },
+        // Assembly / council operations
+        { action: "split-council",            body: "assembly",   voteRuleId: "assembly-supermajority",    description: "Splitting a multi-domain council into two — 2/3 of the assembly" },
+        { action: "allocate-domain-budget",   body: "assembly",   voteRuleId: "assembly-general",          description: "Setting budget envelopes for domains — simple majority of the assembly" },
+        { action: "declare-domain-emergency", body: "council",    voteRuleId: "pool-general",              description: "Declaring a domain emergency — council vote; assembly ratifies within 72h" },
+        { action: "change-market-schedule",   body: "council",    voteRuleId: "pool-general",              description: "Changing market day schedule — council vote" },
+        { action: "enact-domain-statute",     body: "council",    voteRuleId: "pool-general",              description: "Enacting an operating rule within a domain — council vote" },
     ],
 };
 
@@ -577,6 +585,11 @@ export class Constitution {
     /** Which governance body must authorize the given action. Returns null if not in the map. */
     getRequiredBody(action: string): GovernanceBody | null {
         return this.doc.authorityMap.find(a => a.action === action)?.body ?? null;
+    }
+
+    /** The vote rule ID constitutionally mandated for the given action. Returns null if not in the map. */
+    getRequiredVoteRule(action: string): string | null {
+        return this.doc.authorityMap.find(a => a.action === action)?.voteRuleId ?? null;
     }
 
     get authorityMap(): readonly ActionAuthority[] { return this.doc.authorityMap; }

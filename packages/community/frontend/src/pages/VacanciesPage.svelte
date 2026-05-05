@@ -1,7 +1,7 @@
 <script lang="ts">
     import { listVacancies, listPersons, createNomination } from "../lib/api.js";
     import type { VacancyDto, PersonDto } from "../lib/api.js";
-    import { session } from "../lib/session.js";
+    import { session, currentPage, selectedRoleId } from "../lib/session.js";
 
     let vacancies: VacancyDto[] = $state([]);
     let persons: PersonDto[]    = $state([]);
@@ -103,7 +103,7 @@
                         <div class="vacancy-card">
                             <div class="vacancy-top">
                                 <div class="vacancy-info">
-                                    <span class="vacancy-role">{v.roleTitle}</span>
+                                    <button class="vacancy-role-link" onclick={() => { selectedRoleId.set(v.roleId); currentPage.go("vacancy-detail"); }}>{v.roleTitle}</button>
                                     <span class="vacancy-unit">{v.unitName}</span>
                                 </div>
                                 <div class="vacancy-right">
@@ -235,11 +235,19 @@
     gap: 0.15rem;
     min-width: 0;
 }
-.vacancy-role {
+.vacancy-role-link {
+    background: none;
+    border: none;
+    padding: 0;
     font-weight: 600;
     font-size: 0.92rem;
     color: #14532d;
+    cursor: pointer;
+    text-align: left;
+    text-decoration: underline;
+    text-decoration-color: #bbf7d0;
 }
+.vacancy-role-link:hover { text-decoration-color: #16a34a; }
 .vacancy-unit {
     font-size: 0.78rem;
     color: #6b7280;

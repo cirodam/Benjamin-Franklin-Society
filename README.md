@@ -56,16 +56,34 @@ A change that makes the system more efficient but less resilient is probably the
 
 ## What's in the repo
 
-- `packages/community` — the core community node: bank, market, mail, census, governance
+### Community node
+
+- `packages/community` — the core community node: member registry, governance (pools, motions, assembly), census, and the shell that ties everything together
+- `packages/bank` — the internal currency ledger: accounts, transactions, demurrage scheduling, and the credit issuance rules
+- `packages/market` — goods and labour exchange: listings, offers, and fulfillment
+- `packages/mail` — internal messaging between members and between nodes
+- `packages/atheneum` — class coordination: scheduling, enrollment, and facilitation for community-run classes and skill-sharing
+- `packages/grange` — the farming system: farm associations, needs projections, annual food contracts, practice inspections, and settlement
+
+### Network layers
+
 - `packages/federation` — federates communities; runs a clearing house for inter-community trade
 - `packages/commonwealth` — federates federations
 - `packages/globe` — the top-level network layer
-- `packages/bank` — the underlying account ledger, shared by all layers
-- `packages/mail` — inter-node messaging
-- `packages/market` — goods and labour exchange
+
+### Shared
+
 - `packages/core` — shared identity, cryptography, and networking primitives
 
 ## Documentation
 
-- [Organizing a community](docs/organizing-a-community.md)
 - [Architecture](architecture.md)
+- [Banking layer](banking-layer.md)
+- [Messaging layer](messaging-layer.md)
+- [Governance layer](governance-layer.md)
+- [Network layer](network-layer.md)
+- [Clearing layers](clearing-layers.md)
+- [Farming system](docs/farming-system.md)
+- [Addressing](docs/addressing.md)
+- [Legal structure](docs/legal-structure.md)
+- [Charter](docs/charter.md)

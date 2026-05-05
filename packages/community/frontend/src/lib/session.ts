@@ -73,7 +73,7 @@ export const session = createSessionStore();
 /** Set to true when any API call returns 401, so the login page can explain why. */
 export const sessionExpired = writable(false);
 
-export type Page = "dashboard" | "directory" | "constitution" | "settings" | "domains" | "domain" | "unit" | "leadership" | "assembly" | "pool" | "motion" | "applications" | "how-it-works" | "budget" | "associations" | "association" | "add-person" | "locations" | "proposals" | "proposal" | "nodes" | "central-bank" | "social-insurance" | "vacancies" | "nominations" | "connections" | "schedule" | "documents" | "bylaw" | "timeline" | "calendar" | "registry" | "role-type" | "unit-type-detail";
+export type Page = "dashboard" | "directory" | "constitution" | "settings" | "domains" | "domain" | "unit" | "leadership" | "assembly" | "pool" | "motion" | "applications" | "how-it-works" | "budget" | "associations" | "association" | "add-person" | "locations" | "proposals" | "proposal" | "nodes" | "central-bank" | "social-insurance" | "vacancies" | "vacancy-detail" | "nominations" | "connections" | "schedule" | "documents" | "bylaw" | "timeline" | "calendar" | "registry" | "role-type" | "unit-type-detail";
 
 function createPageStore() {
     const { subscribe, set } = writable<Page>("dashboard");
@@ -105,6 +105,9 @@ export const selectedBylawId = writable<string | null>(null);
 
 /** ID of the role type currently being viewed in the role type detail page. */
 export const selectedRoleTypeId = writable<string | null>(null);
+
+/** ID of the role (vacancy) currently being viewed in the vacancy detail page. */
+export const selectedRoleId = writable<string | null>(null);
 
 import type { UnitTypeDto } from "./api.js";
 /** Unit type currently being viewed in the unit type detail page. */

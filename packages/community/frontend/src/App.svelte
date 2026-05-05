@@ -28,6 +28,7 @@ import MotionPage        from "./pages/MotionPage.svelte";
     import ApplyPage           from "./pages/ApplyPage.svelte";
     import NodesPage           from "./pages/NodesPage.svelte";
     import VacanciesPage       from "./pages/VacanciesPage.svelte";
+    import VacancyDetailPage   from "./pages/VacancyDetailPage.svelte";
     import ConnectionsPage     from "./pages/ConnectionsPage.svelte";
     import SchedulePage        from "./pages/SchedulePage.svelte";
     import TimelinePage        from "./pages/TimelinePage.svelte";
@@ -140,6 +141,8 @@ import MotionPage        from "./pages/MotionPage.svelte";
             <SocialInsurancePage />
         {:else if $currentPage === "vacancies"}
             <VacanciesPage />
+        {:else if $currentPage === "vacancy-detail"}
+            <VacancyDetailPage />
         {:else if $currentPage === "connections"}
             <ConnectionsPage />
         {:else if $currentPage === "schedule"}

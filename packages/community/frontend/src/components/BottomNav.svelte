@@ -10,11 +10,10 @@
         { kind: "leaf", id: "dashboard", label: "Dashboard", icon: "⊞" },
         {
             kind: "group", id: "people", label: "People", icon: "◉",
-            activePages: ["directory", "associations", "association", "add-person", "applications"],
+            activePages: ["directory", "associations", "association", "add-person"],
             children: [
                 { kind: "leaf", id: "directory",    label: "Directory",    icon: "⊞" },
                 { kind: "leaf", id: "associations", label: "Associations", icon: "⊟" },
-                { kind: "leaf", id: "applications", label: "Applications", icon: "◎" },
             ],
         },
         {

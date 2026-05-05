@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { MotionService } from "../governance/MotionService.js";
 import { Motion } from "../governance/Motion.js";
 import { PersonService } from "../person/PersonService.js";
+import { Constitution } from "../governance/Constitution.js";
 import { effectRegistry } from "../governance/EffectRegistry.js";
 import { getVoteRule, listVoteRules } from "@ecf/core";
 
@@ -97,22 +98,39 @@ export function listVoteRulesList(_req: Request, res: Response): void {
 }
 
 // POST /api/motions/:id/deliberate
-// Body: { voteRuleId, minApprovals? }
+// Body: { voteRuleId?, minApprovals? }
+// If the motion's kind maps to a constitutional action, voteRuleId is ignored and
+// the constitutionally mandated rule is used instead.
 export function submitForDeliberation(req: AuthedRequest, res: Response): void {
     const personId = req.personId;
     if (!personId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
-    const { voteRuleId, minApprovals } = req.body ?? {};
+    const { minApprovals } = req.body ?? {};
 
-    if (typeof voteRuleId !== "string" || !voteRuleId.trim()) {
-        res.status(400).json({ error: "voteRuleId is required" }); return;
+    const motion = svc().get(req.params.id as string);
+    if (!motion) { res.status(404).json({ error: "Motion not found" }); return; }
+
+    // If the motion kind is a constitutional action, the vote rule is mandated.
+    const constitutionalRule = motion.kind
+        ? Constitution.getInstance().getRequiredVoteRule(motion.kind)
+        : null;
+
+    let resolvedRuleId: string;
+    if (constitutionalRule) {
+        resolvedRuleId = constitutionalRule;
+    } else {
+        const { voteRuleId } = req.body ?? {};
+        if (typeof voteRuleId !== "string" || !voteRuleId.trim()) {
+            res.status(400).json({ error: "voteRuleId is required for motions without a constitutional action kind" }); return;
+        }
+        resolvedRuleId = voteRuleId.trim();
     }
 
     let rule: ReturnType<typeof getVoteRule>;
     try {
-        rule = getVoteRule(voteRuleId.trim());
+        rule = getVoteRule(resolvedRuleId);
     } catch {
-        res.status(400).json({ error: `Unknown voteRuleId. Valid values: ${listVoteRules().map(r => r.id).join(", ")}` }); return;
+        res.status(400).json({ error: `Unknown voteRuleId '${resolvedRuleId}'. Valid values: ${listVoteRules().map(r => r.id).join(", ")}` }); return;
     }
 
     if (rule.legitimacy === "petition") {
@@ -122,13 +140,13 @@ export function submitForDeliberation(req: AuthedRequest, res: Response): void {
     }
 
     try {
-        const motion = svc().submitForDeliberation(
+        const updated = svc().submitForDeliberation(
             req.params.id as string,
             personId,
-            voteRuleId.trim(),
+            resolvedRuleId,
             rule.legitimacy === "petition" ? (minApprovals as number) : undefined,
         );
-        res.json(toDto(motion));
+        res.json(toDto(updated));
     } catch (err) {
         res.status(400).json({ error: (err as Error).message });
     }

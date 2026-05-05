@@ -1159,10 +1159,30 @@ export interface ExpiringRoleDto {
     domainName:   string;
 }
 
+export interface RoleDto {
+    id:             string;
+    roleTypeId:     string | null;
+    title:          string;
+    description:    string;
+    memberHandle:   string | null;
+    kinPerMonth:    number;
+    funded:         boolean;
+    termStartDate:  string | null;
+    termEndDate:    string | null;
+    isActive:       boolean;
+    weeklySchedule: string | null;
+}
+
 export async function listVacancies(): Promise<VacancyDto[]> {
     const res = await fetch("/api/nominations/vacancies");
     if (!res.ok) throw new Error("Failed to load vacancies");
     return res.json() as Promise<VacancyDto[]>;
+}
+
+export async function getRole(id: string): Promise<RoleDto> {
+    const res = await apiFetch(`/api/roles/${id}`);
+    if (!res.ok) throw new Error("Role not found");
+    return res.json() as Promise<RoleDto>;
 }
 
 export async function listNominations(): Promise<NominationDto[]> {
