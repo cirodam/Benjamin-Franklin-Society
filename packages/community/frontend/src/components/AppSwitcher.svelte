@@ -11,6 +11,7 @@
         marketUrl:     string;
         mailUrl:       string;
         atheneumUrl:   string;
+        grangeUrl:     string;
     }
 
     let config = $state<AppConfig | null>(null);
@@ -50,6 +51,7 @@
         { id: "market",    label: "Market",    icon: "⊕", url: config.marketUrl },
         { id: "mail",      label: "Mail",      icon: "✉", url: config.mailUrl },
         { id: "atheneum",  label: "Atheneum",  icon: "⊘", url: config.atheneumUrl },
+        { id: "grange",    label: "Grange",    icon: "⊛", url: config.grangeUrl },
     ] : []);
 </script>
 

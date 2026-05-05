@@ -1,6 +1,3 @@
-<!--
-    AppSwitcher — opens a dropdown to switch between ECF apps with session passthrough.
--->
 <script lang="ts">
     import { onMount } from "svelte";
     import { session } from "../lib/session.js";
@@ -21,7 +18,7 @@
     onMount(async () => {
         try {
             config = await fetch("/api/config").then(r => r.json()) as AppConfig;
-        } catch { /* silent — switcher won't render */ }
+        } catch { /* silent */ }
     });
 
     $effect(() => {
@@ -50,8 +47,8 @@
         { id: "bank",      label: "Bank",      icon: "◈", url: config.bankUrl },
         { id: "market",    label: "Market",    icon: "⊕", url: config.marketUrl },
         { id: "mail",      label: "Mail",      icon: "✉", url: config.mailUrl },
-        { id: "atheneum",  label: "Atheneum",  icon: "⊘", url: config.atheneumUrl, current: true },
-        { id: "grange",    label: "Grange",    icon: "⊛", url: config.grangeUrl },
+        { id: "atheneum",  label: "Atheneum",  icon: "⊘", url: config.atheneumUrl },
+        { id: "grange",    label: "Grange",    icon: "⊛", url: config.grangeUrl, current: true },
     ] : []);
 </script>
 
@@ -93,72 +90,34 @@
 {/if}
 
 <style>
-    .switcher-wrap {
-        position: relative;
-    }
+    .switcher-wrap { position: relative; }
 
     .trigger {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 2rem;
-        height: 2rem;
-        border-radius: 6px;
-        border: none;
-        background: none;
-        cursor: pointer;
-        font-size: 1.15rem;
-        color: #94a3b8;
+        display: flex; align-items: center; justify-content: center;
+        width: 2rem; height: 2rem; border-radius: 6px; border: none;
+        background: none; cursor: pointer; font-size: 1.15rem; color: #94a3b8;
         transition: background 0.1s, color 0.1s;
     }
-
-    .trigger:hover,
-    .trigger.open {
-        background: #334155;
-        color: #e2e8f0;
-    }
+    .trigger:hover, .trigger.open { background: #334155; color: #e2e8f0; }
 
     .dropdown {
-        position: absolute;
-        top: 0;
-        left: calc(100% + 0.5rem);
-        background: #fff;
-        border: 1px solid #e2e8f0;
-        border-radius: 10px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
-        min-width: 11rem;
-        padding: 0.35rem 0;
-        z-index: 300;
+        position: absolute; left: calc(100% + 0.5rem); top: 0;
+        background: #1e293b; border: 1px solid #334155; border-radius: 10px;
+        padding: 0.4rem; min-width: 160px; z-index: 100;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+        display: flex; flex-direction: column; gap: 0.15rem;
     }
 
     .app-item {
-        display: flex;
-        align-items: center;
-        gap: 0.65rem;
-        padding: 0.5rem 1rem;
-        text-decoration: none;
-        color: #1e293b;
-        font-size: 0.875rem;
-        font-weight: 500;
+        display: flex; align-items: center; gap: 0.6rem;
+        padding: 0.5rem 0.75rem; border-radius: 6px;
+        text-decoration: none; color: #cbd5e1; font-size: 0.9rem;
         transition: background 0.1s;
-        white-space: nowrap;
     }
+    .app-item:hover { background: #334155; color: #f1f5f9; }
+    .app-item.current { color: #64748b; cursor: default; }
+    .app-item.current:hover { background: none; }
 
-    a.app-item:hover {
-        background: #f8fafc;
-        color: #0f172a;
-    }
-
-    span.app-item.current {
-        color: #3b82f6;
-        background: #eff6ff;
-        font-weight: 600;
-        cursor: default;
-    }
-
-    .app-icon {
-        font-size: 1rem;
-        width: 1.2rem;
-        text-align: center;
-    }
+    .app-icon { font-size: 1rem; width: 1.2rem; text-align: center; }
+    .app-name  { font-weight: 500; }
 </style>

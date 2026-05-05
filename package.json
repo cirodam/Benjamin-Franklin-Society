@@ -3,7 +3,7 @@
   "private": true,
   "license": "AGPL-3.0-only",
   "scripts": {
-    "build": "npm run build -w @ecf/core && npm run build -w @ecf/bank && npm run build -w @ecf/community && npm run build -w @ecf/federation && npm run build -w @ecf/market && npm run build -w @ecf/mail && npm run build -w @ecf/atheneum",
+    "build": "npm run build -w @ecf/core && npm run build -w @ecf/bank && npm run build -w @ecf/community && npm run build -w @ecf/federation && npm run build -w @ecf/market && npm run build -w @ecf/mail && npm run build -w @ecf/atheneum && npm run build -w @ecf/grange",
     "docker:build:bank": "docker build -f packages/bank/Dockerfile -t ecf-bank .",
     "docker:build:community": "docker build -f packages/community/Dockerfile -t ecf-community .",
     "docker:build:federation": "docker build -f packages/federation/Dockerfile -t ecf-federation .",
@@ -22,6 +22,7 @@
     "packages/federation",
     "packages/market",
     "packages/mail",
-    "packages/atheneum"
+    "packages/atheneum",
+    "packages/grange"
   ]
 }
