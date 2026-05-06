@@ -121,12 +121,6 @@
                                 {#if section.title}
                                     <span class="section-btn-title">{section.title}</span>
                                 {/if}
-                                {#if section.sunsetAt}
-                                    {@const expired = new Date(section.sunsetAt).getTime() <= Date.now()}
-                                    <span class="section-badge {expired ? 'badge-expired' : 'badge-sunset'}">
-                                        {expired ? "expired" : "sunsets " + formatDate(section.sunsetAt)}
-                                    </span>
-                                {/if}
                             </div>
                             <p class="section-btn-snippet">
                                 {#each parseBody(section.body) as seg}
@@ -138,30 +132,6 @@
                 </div>
             </section>
         {/each}
-
-        <!-- Authority map -->
-        {#if (doc.authorityMap?.length ?? 0) > 0}
-            <section class="article authority-section">
-                <h2 class="article-heading">
-                    <span class="article-number">Appendix</span>
-                    Governance Actions
-                </h2>
-                <div class="action-grid">
-                    {#each doc.authorityMap! as action}
-                        <div class="action-row">
-                            <div class="action-top">
-                                <code class="action-name">{action.action}</code>
-                                <AuthorityBadge authorityId={action.body} {authorities} />
-                                {#if action.voteRuleId}
-                                    <VoteRuleBadge ruleId={action.voteRuleId} rules={voteRules} />
-                                {/if}
-                            </div>
-                            <p class="action-desc">{action.description}</p>
-                        </div>
-                    {/each}
-                </div>
-            </section>
-        {/if}
 
         <!-- Amendment history -->
         {#if (doc.amendments?.length ?? 0) > 0}

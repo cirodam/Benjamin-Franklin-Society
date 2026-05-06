@@ -35,7 +35,7 @@
     $effect(() => {
         const c = ctx;
         if (!c) return;
-        loading = true; error = ""; constitution = null; bylawDoc = null;
+        loading = true; error = ""; constitutionDoc = null; bylawDoc = null;
         const docP = c.docId === "constitution"
             ? getConstitution().then(d => { constitutionDoc = d; })
             : getBylaw(c.docId).then(d  => { bylawDoc = d;  });
@@ -112,7 +112,7 @@
         saving = true; saveError = "";
         try {
             if (ctx.docId === "constitution") {
-                constitution = await updateConstitutionSection(section.id, editBody);
+                constitutionDoc = await updateConstitutionSection(section.id, editBody);
             } else {
                 bylawDoc = await updateBylawSection(ctx.docId, section.id, editBody);
             }
@@ -157,14 +157,7 @@
                 {:else if doc.adoptedAt}
                     <span class="chip chip-neutral">Adopted {formatDate(doc.adoptedAt)}</span>
                 {/if}
-                {#if section.sunsetAt}
-                    {@const expired = new Date(section.sunsetAt).getTime() <= Date.now()}
-                    <span class="chip {expired ? 'chip-warn' : 'chip-sunset'}">
-                        {expired ? "Expired" : "Sunsets"} {formatDate(section.sunsetAt)}
-                    </span>
-                {:else}
-                    <span class="chip chip-neutral">Sunsets: never</span>
-                {/if}
+
             </div>
         </div>
 
@@ -192,7 +185,7 @@
                         placeholder="Write section prose. Use {'{paramKey}'} to embed live values."
                         disabled={saving}
                     ></textarea>
-                    {#if constitution}
+                    {#if constitutionDoc}
                         <p class="edit-hint">Use {"{paramKey}"} to embed a live constitutional value inline.</p>
                     {/if}
                     {#if saveError}
@@ -207,7 +200,7 @@
                 </div>
             {:else}
                 <div class="body-text">
-                    {#if constitution}
+                    {#if constitutionDoc}
                         {#each parseBody(section.body) as seg}
                             {#if seg.type === "text"}
                                 {seg.content}

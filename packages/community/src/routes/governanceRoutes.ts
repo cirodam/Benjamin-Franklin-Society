@@ -5,7 +5,8 @@ import { DocumentLoader } from "../governance/DocumentLoader.js";
 import { AuthorityLoader } from "../governance/AuthorityLoader.js";
 import { PersonService } from "../person/PersonService.js";
 import { CommunityLogService } from "../log/CommunityLogService.js";
-import { Assembly, AssemblyTerm, type AssemblyTermData, currentTermWindow, nextTermStartDate } from "@ecf/core";
+import { Assembly, AssemblyTerm, type AssemblyTermData, currentTermWindow, nextTermStartDate, parseDirective } from "@ecf/core";
+import type { DocumentDirective, GoverningDocument } from "@ecf/core";
 import { CommunityDb } from "../CommunityDb.js";
 
 const router = Router();
@@ -75,6 +76,17 @@ router.get("/documents/:id", (req: Request, res: Response) => {
     res.json(doc);
 });
 
+// GET /api/documents/:id/print
+// Returns a clean, self-contained HTML page suitable for printing or archiving.
+// Each section that carries directives gets an "Effect on software" block that
+// describes what the directive does in plain language.
+router.get("/documents/:id/print", (req: Request, res: Response) => {
+    const doc = bylaws.load(req.params.id as string);
+    if (!doc) { res.status(404).json({ error: "Document not found" }); return; }
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.send(renderPrintHtml(doc));
+});
+
 // ── Bylaws ────────────────────────────────────────────────────────────────────
 
 // The charter is immutable from within the community — reject any write attempt.
@@ -118,10 +130,10 @@ router.post("/bylaws/:id/articles", requireSteward, rejectCharter, (req: Request
 });
 
 router.post("/bylaws/:id/articles/:number/sections", requireSteward, rejectCharter, (req: Request, res: Response) => {
-    const { sectionId, title, body, rationale, sunsetAt, voteRuleId } = (req.body ?? {}) as { sectionId?: string; title?: string; body?: string; rationale?: string; sunsetAt?: string | null; voteRuleId?: string | null };
+    const { sectionId, title, body, rationale, voteRuleId } = (req.body ?? {}) as { sectionId?: string; title?: string; body?: string; rationale?: string; voteRuleId?: string | null };
     if (!sectionId?.trim() || !body?.trim()) { res.status(400).json({ error: "sectionId and body are required" }); return; }
     try {
-        res.status(201).json(bylaws.addSection(req.params.id as string, req.params.number as string, sectionId, title ?? "", body, { rationale, sunsetAt, voteRuleId }));
+        res.status(201).json(bylaws.addSection(req.params.id as string, req.params.number as string, sectionId, title ?? "", body, { rationale, voteRuleId }));
     } catch (err) {
         const msg = (err as Error).message;
         res.status(msg.includes("not found") ? 404 : 409).json({ error: msg });
@@ -273,3 +285,175 @@ router.delete("/assembly", requireSteward, (_req: Request, res: Response) => {
 });
 
 export default router;
+
+// ── Print renderer ────────────────────────────────────────────────────────────
+
+function esc(s: string): string {
+    return s
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+}
+
+function renderDirectiveEffect(d: DocumentDirective): string {
+    const parsed = parseDirective(d);
+    if (!parsed) return "";
+
+    if (d.verb === "authority.define") {
+        const p = parsed as { id: string; kind: string; defaultVoteRuleId: string; description: string };
+        const kindLabels: Record<string, string> = {
+            assembly:      "Sortition Assembly",
+            committee:     "Committee",
+            "leader-pool": "Leader Pool",
+            membership:    "Full Membership",
+            referendum:    "Referendum",
+        };
+        const kind = kindLabels[p.kind] ?? p.kind;
+        return `Provisions a <strong>${esc(kind)}</strong> governing authority with id <code>${esc(p.id)}</code>, ` +
+               `default vote rule <code>${esc(p.defaultVoteRuleId)}</code>.`;
+    }
+
+    if (d.verb === "authority.grant") {
+        const p = parsed as { authorityId: string; action: string; voteRuleId: string };
+        return `Grants authority <code>${esc(p.authorityId)}</code> the power to perform ` +
+               `<strong>${esc(p.action)}</strong> motions under vote rule <code>${esc(p.voteRuleId)}</code>.`;
+    }
+
+    if (d.verb === "parameter.define") {
+        const p = parsed as { key: string; value: number | boolean; immutable: boolean; min?: number; max?: number; description: string };
+        let constraints = "";
+        if (p.min !== undefined && p.max !== undefined) {
+            constraints = ` (range: ${p.min}–${p.max})`;
+        } else if (p.min !== undefined) {
+            constraints = ` (min: ${p.min})`;
+        } else if (p.max !== undefined) {
+            constraints = ` (max: ${p.max})`;
+        }
+        const lock = p.immutable ? " This parameter is <strong>immutable</strong> and cannot be changed by amendment." : "";
+        return `Sets system parameter <code>${esc(p.key)}</code> to <strong>${esc(String(p.value))}</strong>${esc(constraints)}.${lock}`;
+    }
+
+    if (d.verb === "document.require") {
+        const type = d.args[0] ?? "";
+        const desc = d.args.slice(1).join(" ");
+        return `Requires a governing document of type <code>${esc(type)}</code> to exist${desc ? ": " + esc(desc) : ""}.`;
+    }
+
+    return "";
+}
+
+function renderPrintHtml(doc: GoverningDocument): string {
+    const adoptedDate = doc.adoptedAt ? new Date(doc.adoptedAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : "";
+    const expiresDate = doc.expiresAt ? new Date(doc.expiresAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : null;
+
+    let body = "";
+
+    if (doc.preamble) {
+        body += `<div class="preamble"><p>${esc(doc.preamble)}</p></div>\n`;
+    }
+
+    for (const article of doc.articles) {
+        body += `<article>\n`;
+        body += `  <h2>Article ${esc(article.number)}${article.title ? " — " + esc(article.title) : ""}</h2>\n`;
+        if (article.preamble) {
+            body += `  <p class="article-preamble">${esc(article.preamble)}</p>\n`;
+        }
+
+        for (const section of article.sections) {
+            body += `  <section>\n`;
+            body += `    <h3>§${esc(section.id)}${section.title ? " — " + esc(section.title) : ""}</h3>\n`;
+            body += `    <div class="section-body"><p>${esc(section.body ?? "")}</p></div>\n`;
+
+            if (section.rationale) {
+                body += `    <details class="rationale">\n`;
+                body += `      <summary>Rationale</summary>\n`;
+                body += `      <p>${esc(section.rationale)}</p>\n`;
+                body += `    </details>\n`;
+            }
+
+            const directives = section.directives ?? [];
+            if (directives.length > 0) {
+                const effects = directives
+                    .map(d => renderDirectiveEffect(d))
+                    .filter(Boolean);
+                if (effects.length > 0) {
+                    body += `    <aside class="effect-on-software">\n`;
+                    body += `      <h4>Effect on software</h4>\n`;
+                    body += `      <ul>\n`;
+                    for (const e of effects) {
+                        body += `        <li>${e}</li>\n`;
+                    }
+                    body += `      </ul>\n`;
+                    body += `    </aside>\n`;
+                }
+            }
+
+            body += `  </section>\n`;
+        }
+
+        body += `</article>\n`;
+    }
+
+    const typeLabel = (doc.type ?? "document").charAt(0).toUpperCase() + (doc.type ?? "document").slice(1);
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${esc(doc.title)} — ${esc(typeLabel)}</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 12pt;
+      line-height: 1.6;
+      max-width: 720px;
+      margin: 2rem auto;
+      padding: 0 1.5rem;
+      color: #111;
+    }
+    h1 { font-size: 1.6rem; margin-bottom: 0.25rem; }
+    h2 { font-size: 1.2rem; margin-top: 2.5rem; border-bottom: 1px solid #ccc; padding-bottom: 0.25rem; }
+    h3 { font-size: 1rem; margin-top: 1.5rem; margin-bottom: 0.25rem; }
+    h4 { font-size: 0.9rem; margin: 0 0 0.35rem; color: #444; }
+    p { margin: 0.5rem 0; }
+    code { font-family: "Courier New", monospace; font-size: 0.88em; background: #f4f4f4; padding: 0 0.2em; border-radius: 2px; }
+    .doc-meta { font-size: 0.85rem; color: #555; margin-bottom: 1.5rem; }
+    .preamble { border-left: 3px solid #ccc; padding-left: 1rem; margin: 1rem 0 2rem; font-style: italic; color: #333; }
+    .article-preamble { font-style: italic; color: #444; }
+    .section-body p { text-align: justify; }
+    .rationale { margin-top: 0.5rem; font-size: 0.88rem; color: #555; }
+    .rationale summary { cursor: pointer; font-style: italic; }
+    .effect-on-software {
+      margin-top: 0.75rem;
+      padding: 0.6rem 0.9rem;
+      background: #f8f8f8;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-family: "Courier New", monospace;
+      font-size: 0.82rem;
+    }
+    .effect-on-software ul { margin: 0; padding-left: 1.2rem; }
+    .effect-on-software li { margin: 0.25rem 0; }
+    .expires { color: #b45309; font-weight: bold; }
+    @media print {
+      body { margin: 1cm; }
+      details { display: block; }
+      details summary { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <h1>${esc(doc.title)}</h1>
+  <div class="doc-meta">
+    <span>${esc(typeLabel)}</span>
+    ${adoptedDate ? `· Adopted ${esc(adoptedDate)}` : ""}
+    ${expiresDate ? `· <span class="expires">Expires ${esc(expiresDate)}</span>` : ""}
+    · Version ${doc.version ?? 1}
+  </div>
+  ${body}
+</body>
+</html>`;
+}

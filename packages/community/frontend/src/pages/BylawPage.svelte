@@ -149,12 +149,6 @@
                                 {#if section.title}
                                     <span class="section-btn-title">{section.title}</span>
                                 {/if}
-                                {#if section.sunsetAt}
-                                    {@const expired = new Date(section.sunsetAt).getTime() <= Date.now()}
-                                    <span class="section-badge {expired ? 'badge-expired' : 'badge-sunset'}">
-                                        {expired ? "expired" : "sunsets " + formatDate(section.sunsetAt)}
-                                    </span>
-                                {/if}
                             </div>
                             <p class="section-btn-snippet">{section.body}</p>
                         </button>

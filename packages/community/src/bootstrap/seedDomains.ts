@@ -1,7 +1,8 @@
 import logger from "../logger.js";
 import { DomainService } from "../DomainService.js";
 import { FunctionalUnit } from "../common/domain/FunctionalUnit.js";
-import { RoleType, DEFAULT_ROLE_TYPES } from "../common/RoleType.js";
+import { RoleType } from "../common/RoleType.js";
+import { DEFAULT_ROLE_TYPES } from "../common/defaultRoleTypes.js";
 import { CentralBank } from "../domains/central_bank/CentralBank.js";
 import { SocialInsuranceBank } from "../domains/social_insurance/SocialInsuranceBank.js";
 import { CommunityTreasury } from "../domains/community_treasury/CommunityTreasury.js";

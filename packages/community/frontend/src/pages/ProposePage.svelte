@@ -1,7 +1,7 @@
 <script lang="ts">
     import { listMotionEffects, getAuthorities, createMotion } from "../lib/api.js";
     import type { MotionEffectKind, AuthorityDto } from "../lib/api.js";
-    import { currentPage, session, selectedMotionId } from "../lib/session.js";
+    import { currentPage, session, selectedMotionId, selectedAuthorityId } from "../lib/session.js";
     import EffectPayloadForm from "../components/EffectPayloadForm.svelte";
     import AuthorityBadge from "../components/AuthorityBadge.svelte";
 
@@ -11,7 +11,7 @@
         "set-dues-rate":            { icon: "⊕",  desc: "Set the monthly dues rate charged to all members." },
         "set-retirement-age":       { icon: "◷",  desc: "Change the age at which members become eligible for retirement benefits." },
         "set-retirement-payout":    { icon: "⊜",  desc: "Change the monthly kin paid to each retiree." },
-        "add-person":               { icon: "◉",  desc: "Admit a new person to the community via membership vote." },
+        "admit-member":              { icon: "◉",  desc: "Admit a new person to the community via membership petition." },
         "suspend-member":           { icon: "⊘",  desc: "Suspend a member's participation pending review." },
         "reinstate-member":         { icon: "⊛",  desc: "Reinstate a previously suspended member." },
         "add-pool":                  { icon: "★",  desc: "Create a new named leadership pool or governing council." },
@@ -36,6 +36,9 @@
     let authorities = $state<AuthorityDto[]>([]);
     let loading     = $state(true);
     let error       = $state("");
+
+    // Authority filter — "all" means show everything grouped as before
+    let filterAuthorityId = $state("all");
 
     // Form state
     let selectedKind  = $state("");
@@ -69,13 +72,11 @@
         formDesc      = "";
         formPayload   = {};
         submitError   = "";
-        // Pre-fill authority from bodyHint
-        if (k.bodyHint === "referendum") {
-            formAuthority = "membership";
-        } else if (k.bodyHint === "assembly") {
-            formAuthority = "assembly";
+        // Pre-fill authority from the effect's declared authorityId
+        if (k.authorityId) {
+            formAuthority = k.authorityId;
         } else {
-            formAuthority = authorities[0]?.id ?? "assembly";
+            formAuthority = filterAuthorityId !== "all" ? filterAuthorityId : (authorities[0]?.id ?? "assembly");
         }
     }
 
@@ -99,18 +100,53 @@
         }
     }
 
-    // Group by authority type
-    const membershipEffects = $derived(effects.filter(k => k.bodyHint === "referendum"));
-    const assemblyEffects   = $derived(effects.filter(k => k.bodyHint === "assembly"));
-    const generalEffects    = $derived(effects.filter(k => !k.bodyHint));
+    // Build power lookup: action → { sectionId, docId } from the authority with that power
+    const powerSource = $derived.by(() => {
+        const map = new Map<string, { sectionId: string; docId: string; authorityId: string }>();
+        for (const a of authorities) {
+            for (const p of a.powers) {
+                if (!map.has(p.action)) map.set(p.action, { sectionId: p.sectionId, docId: p.docId, authorityId: a.id });
+            }
+        }
+        return map;
+    });
+
+    // Filter kinds by selected authority
+    const visibleEffects = $derived.by(() => {
+        if (filterAuthorityId === "all") return effects;
+        const auth = authorities.find(a => a.id === filterAuthorityId);
+        if (!auth) return effects;
+        const grantedActions = new Set(auth.powers.map(p => p.action));
+        // Show kinds this authority governs + kinds with no authority declared (free-form)
+        return effects.filter(k => !k.authorityId || grantedActions.has(k.kind) || k.authorityId === filterAuthorityId);
+    });
+
+    // After filtering, group by governing authority
+    const governedGroups = $derived.by(() => {
+        const groups = new Map<string, MotionEffectKind[]>();
+        const free: MotionEffectKind[] = [];
+        for (const k of visibleEffects) {
+            if (k.authorityId) {
+                if (!groups.has(k.authorityId)) groups.set(k.authorityId, []);
+                groups.get(k.authorityId)!.push(k);
+            } else {
+                free.push(k);
+            }
+        }
+        return { groups, free };
+    });
 
     function meta(kind: string) {
         return ACTION_META[kind] ?? { icon: "⊕", desc: "" };
     }
 
-    // Resolve display name of an authority
     function authorityName(id: string): string {
         return authorities.find(a => a.id === id)?.name ?? id;
+    }
+
+    function openAuthorityPage(id: string) {
+        selectedAuthorityId.set(id);
+        currentPage.go("authority");
     }
 </script>
 
@@ -126,15 +162,39 @@
         <div class="error-msg">{error}</div>
     {:else}
 
+        <!-- Authority filter pills -->
+        {#if authorities.length > 0}
+            <div class="authority-filter">
+                <button
+                    class="filter-pill"
+                    class:active={filterAuthorityId === "all"}
+                    onclick={() => { filterAuthorityId = "all"; selectedKind = ""; }}
+                >All</button>
+                {#each authorities as a (a.id)}
+                    <button
+                        class="filter-pill"
+                        class:active={filterAuthorityId === a.id}
+                        onclick={() => { filterAuthorityId = a.id; selectedKind = ""; }}
+                    >{a.name}</button>
+                {/each}
+            </div>
+        {/if}
+
         {#snippet kindList(kinds: MotionEffectKind[])}
             {#each kinds as k (k.kind)}
                 {@const m = meta(k.kind)}
                 {@const isSelected = selectedKind === k.kind}
+                {@const src = powerSource.get(k.kind)}
                 <div class="action-card" class:selected={isSelected}>
                     <button class="card-btn" onclick={() => selectKind(k)}>
                         <span class="card-icon">{m.icon}</span>
                         <div class="card-body">
-                            <span class="card-label">{k.label}</span>
+                            <span class="card-label">
+                                {k.label}
+                                {#if src}
+                                    <span class="power-source" title="Jurisdiction declared in §{src.sectionId}">§{src.sectionId}</span>
+                                {/if}
+                            </span>
                             <span class="card-desc">{m.desc}</span>
                         </div>
                         <span class="card-chevron">{isSelected ? "▲" : "▼"}</span>
@@ -162,7 +222,7 @@
                                 ></textarea>
                             </label>
 
-                            {#if !k.bodyHint}
+                            {#if !k.authorityId}
                                 <label class="field-label">Authority
                                     <select class="field-input" bind:value={formAuthority} disabled={submitting}>
                                         {#each authorities as a (a.id)}
@@ -205,34 +265,53 @@
             {/each}
         {/snippet}
 
-        {#if membershipEffects.length}
-            <section class="group">
-                <div class="group-header">
-                    <AuthorityBadge authorityId="membership" {authorities} />
-                    <span class="group-hint">Full membership votes on these motions</span>
-                </div>
-                {@render kindList(membershipEffects)}
-            </section>
-        {/if}
-
-        {#if assemblyEffects.length}
-            <section class="group">
-                <div class="group-header">
-                    <AuthorityBadge authorityId="assembly" {authorities} />
-                    <span class="group-hint">The assembly votes on these motions</span>
-                </div>
-                {@render kindList(assemblyEffects)}
-            </section>
-        {/if}
-
-        {#if generalEffects.length}
-            <section class="group">
-                <div class="group-header">
-                    <span class="group-label">General</span>
-                    <span class="group-hint">Choose which authority votes on these</span>
-                </div>
-                {@render kindList(generalEffects)}
-            </section>
+        {#if filterAuthorityId === "all"}
+            <!-- Default grouped view -->
+            {#each [...governedGroups.groups.entries()] as [authorityId, kinds] (authorityId)}
+                <section class="group">
+                    <div class="group-header">
+                        <button class="authority-link" onclick={() => openAuthorityPage(authorityId)}>
+                            <AuthorityBadge {authorityId} {authorities} />
+                        </button>
+                        <span class="group-hint">Governed by {authorityName(authorityId)}</span>
+                    </div>
+                    {@render kindList(kinds)}
+                </section>
+            {/each}
+            {#if governedGroups.free.length}
+                <section class="group">
+                    <div class="group-header">
+                        <span class="group-label">General</span>
+                        <span class="group-hint">Choose which authority votes on these</span>
+                    </div>
+                    {@render kindList(governedGroups.free)}
+                </section>
+            {/if}
+        {:else}
+            <!-- Filtered view: all visible effects flat, grouped same way -->
+            {#each [...governedGroups.groups.entries()] as [authorityId, kinds] (authorityId)}
+                <section class="group">
+                    <div class="group-header">
+                        <button class="authority-link" onclick={() => openAuthorityPage(authorityId)}>
+                            <AuthorityBadge {authorityId} {authorities} />
+                        </button>
+                        <span class="group-hint">Governed by {authorityName(authorityId)}</span>
+                    </div>
+                    {@render kindList(kinds)}
+                </section>
+            {/each}
+            {#if governedGroups.free.length}
+                <section class="group">
+                    <div class="group-header">
+                        <span class="group-label">General</span>
+                        <span class="group-hint">Choose which authority votes on these</span>
+                    </div>
+                    {@render kindList(governedGroups.free)}
+                </section>
+            {/if}
+            {#if visibleEffects.length === 0}
+                <p class="empty-note">No actions are governed by this authority.</p>
+            {/if}
         {/if}
 
     {/if}
@@ -272,6 +351,56 @@
     }
 
     .state-msg { color: #64748b; font-size: 0.9rem; text-align: center; padding: 2rem 0; }
+
+    /* ── Authority filter pills ──────────────────────────────────────── */
+    .authority-filter {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+    }
+    .filter-pill {
+        background: #f1f5f9;
+        border: 1px solid #e2e8f0;
+        border-radius: 999px;
+        color: #475569;
+        font-size: 0.8rem;
+        font-weight: 500;
+        padding: 0.25rem 0.75rem;
+        cursor: pointer;
+    }
+    .filter-pill:hover { background: #e2e8f0; }
+    .filter-pill.active {
+        background: #dcfce7;
+        border-color: #86efac;
+        color: #15803d;
+    }
+
+    /* ── Power source badge ──────────────────────────────────────────── */
+    .power-source {
+        display: inline-block;
+        margin-left: 0.35rem;
+        background: #f0fdf4;
+        border: 1px solid #bbf7d0;
+        border-radius: 4px;
+        color: #16a34a;
+        font-size: 0.7rem;
+        font-weight: 600;
+        padding: 0.05rem 0.3rem;
+        vertical-align: middle;
+    }
+
+    /* ── Authority link button in group header ───────────────────────── */
+    .authority-link {
+        background: none;
+        border: none;
+        padding: 0;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+    }
+
+    /* ── Empty note ──────────────────────────────────────────────────── */
+    .empty-note { color: #64748b; font-size: 0.9rem; font-style: italic; text-align: center; padding: 1.5rem 0; }
     .error-msg { color: #dc2626; font-size: 0.88rem; }
 
     /* ── Groups ────────────────────────────────────────────────────────── */

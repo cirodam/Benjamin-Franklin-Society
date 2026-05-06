@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { MotionService } from "../governance/MotionService.js";
 import { Motion } from "@ecf/core";
 import { PersonService } from "../person/PersonService.js";
+import { DocumentReconciler } from "../governance/DocumentReconciler.js";
 import { DocumentLoader } from "../governance/DocumentLoader.js";
 import { effectRegistry } from "@ecf/core";
 import { AuthorityService } from "../governance/AuthorityService.js";
@@ -44,7 +45,16 @@ export function getMotion(req: Request, res: Response): void {
 
 // GET /api/authorities
 export function listAuthorities(_req: Request, res: Response): void {
-    res.json(AuthorityService.getInstance().getAll());
+    const reconciler = DocumentReconciler.getInstance();
+    const authorities = AuthorityService.getInstance().getAll();
+    res.json(authorities.map(a => ({
+        id:                a.id,
+        name:              a.name,
+        description:       a.description,
+        kind:              a.kind,
+        defaultVoteRuleId: a.defaultVoteRuleId,
+        powers:            reconciler.getPowers(a.id),
+    })));
 }
 
 // GET /api/motions/effects
@@ -60,17 +70,38 @@ export function createMotion(req: AuthedRequest, res: Response): void {
 
     const { authorityId, title, description, parentId, kind, payload, premises, expectedOutcome } = req.body ?? {};
 
-    if (typeof authorityId !== "string" || !authorityId.trim()) { res.status(400).json({ error: "authorityId is required" }); return; }
     if (typeof title !== "string" || !title.trim()) { res.status(400).json({ error: "title is required" }); return; }
     if (typeof description !== "string" || !description.trim()) { res.status(400).json({ error: "description is required" }); return; }
 
     // Validate effect kind + payload at creation time
+    let resolvedAuthorityId: string | undefined;
     if (kind !== undefined && kind !== null) {
         if (typeof kind !== "string" || !kind.trim()) {
             res.status(400).json({ error: "kind must be a non-empty string" }); return;
         }
         const payloadErr = effectRegistry.validatePayload(kind.trim(), payload ?? {});
         if (payloadErr) { res.status(400).json({ error: payloadErr }); return; }
+
+        // Resolve the governing authority from the power cache (directive-based).
+        const governed = DocumentReconciler.getInstance().getAuthorityForAction(kind.trim());
+        if (governed) {
+            // If the caller also supplied an authorityId, it must match.
+            if (typeof authorityId === "string" && authorityId.trim() && authorityId.trim() !== governed.authorityId) {
+                res.status(403).json({
+                    error: `Action "${kind.trim()}" is governed by authority "${governed.authorityId}" — ` +
+                           `cannot assign it to "${authorityId.trim()}".`,
+                }); return;
+            }
+            resolvedAuthorityId = governed.authorityId;
+        }
+    }
+
+    // Fall back to caller-supplied authorityId for free-form motions (no governed action kind).
+    if (!resolvedAuthorityId) {
+        if (typeof authorityId !== "string" || !authorityId.trim()) {
+            res.status(400).json({ error: "authorityId is required for motions without a governed action kind" }); return;
+        }
+        resolvedAuthorityId = authorityId.trim();
     }
 
     const person = ppl().get(personId);
@@ -82,7 +113,7 @@ export function createMotion(req: AuthedRequest, res: Response): void {
 
     try {
         const motion = svc().create({
-            authorityId:     authorityId.trim(),
+            authorityId:     resolvedAuthorityId,
             title:           title.trim(),
             description:     description.trim(),
             proposerId:      personId,
@@ -117,14 +148,14 @@ export function submitForDeliberation(req: AuthedRequest, res: Response): void {
     const motion = svc().get(req.params.id as string);
     if (!motion) { res.status(404).json({ error: "Motion not found" }); return; }
 
-    // If the motion kind is a constitutional action, the vote rule is mandated.
-    const constitutionalRule = motion.kind
-        ? new DocumentLoader().getRequiredVoteRule("constitution", motion.kind)
+    // If the motion kind is a governed action, the vote rule is mandated by the power cache.
+    const govEntry = motion.kind
+        ? DocumentReconciler.getInstance().getAuthorityForAction(motion.kind)
         : null;
 
     let resolvedRuleId: string;
-    if (constitutionalRule) {
-        resolvedRuleId = constitutionalRule;
+    if (govEntry) {
+        resolvedRuleId = govEntry.voteRuleId;
     } else {
         const { voteRuleId } = req.body ?? {};
         if (typeof voteRuleId !== "string" || !voteRuleId.trim()) {
@@ -141,9 +172,31 @@ export function submitForDeliberation(req: AuthedRequest, res: Response): void {
     }
 
     if (rule.legitimacy === "petition") {
-        if (!Number.isInteger(minApprovals) || (minApprovals as number) < 1) {
-            res.status(400).json({ error: "minApprovals must be a positive integer for petition rule" }); return;
+        // If caller didn't supply minApprovals, read petitionThreshold from the membership bylaw.
+        let resolvedMin: number | undefined =
+            (Number.isInteger(minApprovals) && (minApprovals as number) >= 1)
+                ? (minApprovals as number)
+                : undefined;
+        if (resolvedMin === undefined) {
+            try {
+                const threshold = new DocumentLoader().getParam<number>("membership", "petitionThreshold");
+                if (typeof threshold === "number" && Number.isInteger(threshold) && threshold >= 1) {
+                    resolvedMin = threshold;
+                }
+            } catch { /* membership bylaw not yet seeded */ }
         }
+        if (resolvedMin === undefined) {
+            res.status(400).json({ error: "minApprovals must be a positive integer for petition rule (or seed the membership bylaw)" }); return;
+        }
+        try {
+            const updated = svc().submitForDeliberation(
+                req.params.id as string, personId, resolvedRuleId, resolvedMin,
+            );
+            res.json(toDto(updated));
+        } catch (err) {
+            res.status(400).json({ error: (err as Error).message });
+        }
+        return;
     }
 
     try {
@@ -151,7 +204,7 @@ export function submitForDeliberation(req: AuthedRequest, res: Response): void {
             req.params.id as string,
             personId,
             resolvedRuleId,
-            rule.legitimacy === "petition" ? (minApprovals as number) : undefined,
+            undefined,
         );
         res.json(toDto(updated));
     } catch (err) {

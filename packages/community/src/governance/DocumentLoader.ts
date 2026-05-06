@@ -6,8 +6,6 @@ import {
     type DocumentSection,
     type DocumentParameter,
     type DocumentAmendment,
-    type ActionAuthority,
-    extractParamKeys,
 } from "@ecf/core";
 
 export class DocumentLoader {
@@ -95,7 +93,7 @@ export class DocumentLoader {
         sectionId:     string,
         title:         string,
         body:          string,
-        opts?: { rationale?: string; sunsetAt?: string | null; voteRuleId?: string | null },
+        opts?: { rationale?: string; voteRuleId?: string | null },
     ): GoverningDocument {
         const doc     = this.requireWritable(docId);
         const article = doc.articles.find(a => a.number === articleNumber);
@@ -105,10 +103,8 @@ export class DocumentLoader {
             id:         sectionId,
             title:      title.trim() || undefined,
             body:       body.trim(),
-            paramKeys:  extractParamKeys(body),
             adoptedAt:  new Date().toISOString(),
             rationale:  opts?.rationale?.trim() || undefined,
-            sunsetAt:   opts?.sunsetAt ?? null,
             voteRuleId: opts?.voteRuleId ?? null,
         };
         article.sections.push(section);
@@ -121,8 +117,7 @@ export class DocumentLoader {
         for (const article of doc.articles) {
             const section = article.sections.find(s => s.id === sectionId);
             if (section) {
-                section.body      = body.trim();
-                section.paramKeys = extractParamKeys(body);
+                section.body = body.trim();
                 this.save(doc);
                 return doc;
             }
@@ -176,17 +171,6 @@ export class DocumentLoader {
         doc.amendments.push(amendment);
         this.save(doc);
         return doc;
-    }
-
-    // ── Authority map ─────────────────────────────────────────────────────────
-
-    getAuthorityMap(docId: string): ActionAuthority[] {
-        return this.requireDoc(docId).authorityMap ?? [];
-    }
-
-    /** Returns the vote rule id for an action kind, or null if not mapped. */
-    getRequiredVoteRule(docId: string, action: string): string | null {
-        return this.requireDoc(docId).authorityMap?.find(a => a.action === action)?.voteRuleId ?? null;
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

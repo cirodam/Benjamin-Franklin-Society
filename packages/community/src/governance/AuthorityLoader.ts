@@ -1,5 +1,5 @@
 import { CommunityDb } from "../CommunityDb.js";
-import { Authority, Assembly, Committee, AUTHORITY_ASSEMBLY, BUILTIN_AUTHORITY_IDS } from "@ecf/core";
+import { Authority, Assembly, Committee } from "@ecf/core";
 
 function deserialize(raw: string): Authority {
     const d = JSON.parse(raw) as Record<string, unknown>;
@@ -76,22 +76,19 @@ export class AuthorityLoader {
     }
 
     delete(id: string): boolean {
-        if ((BUILTIN_AUTHORITY_IDS as readonly string[]).includes(id)) {
+        if (id === "assembly" || id === "membership" || id === "referendum") {
             throw new Error(`Cannot delete built-in authority "${id}"`);
         }
         return this.db.prepare("DELETE FROM authorities WHERE id = ?").run(id).changes > 0;
     }
 
-    /** Seed built-in authorities if they don't already exist. */
+    /**
+     * Previously seeded hardcoded built-in authorities.
+     * Authorities are now created by DocumentReconciler from authority.define
+     * directives in the constitution.  This method is kept as a no-op so that
+     * call sites in server.ts don't need to change.
+     */
     seedBuiltins(): void {
-        // Only the assembly is stored — "membership" is a virtual authority resolved at runtime.
-        if (!this.load(AUTHORITY_ASSEMBLY)) {
-            this.save(new Assembly(
-                AUTHORITY_ASSEMBLY,
-                "Assembly",
-                "simple-majority",
-                "The seated assembly — members drawn by sortition for the current term.",
-            ));
-        }
+        // No-op — DocumentReconciler.reconcile() handles authority creation.
     }
 }

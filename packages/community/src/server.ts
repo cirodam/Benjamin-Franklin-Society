@@ -49,6 +49,7 @@ import { seedDomains } from "./bootstrap/seedDomains.js";
 import { registerMonetaryHandlers } from "./bootstrap/registerMonetaryHandlers.js";
 import { NominationLoader } from "./nomination/NominationLoader.js";
 import { NominationService } from "./nomination/NominationService.js";
+import { DocumentReconciler } from "./governance/DocumentReconciler.js";
 import { ShiftLoader } from "./shift/ShiftLoader.js";
 import { ShiftService } from "./shift/ShiftService.js";
 import { CommunityLogLoader } from "./log/CommunityLogLoader.js";
@@ -143,7 +144,7 @@ async function main(): Promise<void> {
     // ── Constitution (seed on first boot if missing) ─────────────────
     {
         const { DocumentLoader }        = await import("./governance/DocumentLoader.js");
-        const { DEFAULT_CONSTITUTION }  = await import("./governance/ConstitutionDefaults.js");
+        const { DEFAULT_CONSTITUTION }  = await import("./governance/defaults/ConstitutionDefaults.js");
         const docs = new DocumentLoader();
         if (!docs.load("constitution")) {
             docs.save(DEFAULT_CONSTITUTION);
@@ -154,11 +155,33 @@ async function main(): Promise<void> {
     // ── Charter (seed on existing installs if missing) ────────────────────
     {
         const { DocumentLoader }    = await import("./governance/DocumentLoader.js");
-        const { makeDefaultCharter } = await import("./governance/CharterDefaults.js");
+        const { makeDefaultCharter } = await import("./governance/defaults/CharterDefaults.js");
         const docs = new DocumentLoader();
         if (!docs.load("charter")) {
             docs.save(makeDefaultCharter());
             logger.info("Seeded default charter document");
+        }
+    }
+
+    // ── Membership bylaw (seed on first boot if missing) ──────────────────
+    {
+        const { DocumentLoader }           = await import("./governance/DocumentLoader.js");
+        const { MembershipBylawDefaults }  = await import("./governance/defaults/MembershipBylawDefaults.js");
+        const docs = new DocumentLoader();
+        if (!docs.load("membership")) {
+            docs.save(MembershipBylawDefaults.build());
+            logger.info("Seeded default membership bylaw");
+        }
+    }
+
+    // ── Assembly & Voting bylaw (seed on first boot if missing) ───────────
+    {
+        const { DocumentLoader }           = await import("./governance/DocumentLoader.js");
+        const { AssemblyBylawDefaults }    = await import("./governance/defaults/AssemblyBylawDefaults.js");
+        const docs = new DocumentLoader();
+        if (!docs.load("assembly-voting")) {
+            docs.save(AssemblyBylawDefaults.build());
+            logger.info("Seeded default assembly and voting bylaw");
         }
     }
 
@@ -190,8 +213,9 @@ async function main(): Promise<void> {
     const motionLoader = new MotionLoader();
     MotionService.getInstance().init(motionLoader);
 
-    // ── Authorities (seed built-ins) ────────────────────────────────────────
+    // ── Authorities (seed built-ins, then reconcile from documents) ─────────
     AuthorityLoader.getInstance().seedBuiltins();
+    DocumentReconciler.getInstance().reconcile();
 
     // ── Payment tokens ─────────────────────────────────────────────────────
     // Auto-assemble RoutableAddress from federation membership record when approved,

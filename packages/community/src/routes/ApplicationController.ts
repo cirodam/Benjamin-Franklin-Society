@@ -50,7 +50,7 @@ export function publicSubmitApplication(req: Request, res: Response): void {
             description:    message.trim(),
             proposerId:     "public",
             proposerHandle: "public application",
-            kind:           "add-person",
+            kind:           "admit-member",
             payload:        JSON.stringify({ firstName: fn, lastName: ln, birthDate }),
         });
 

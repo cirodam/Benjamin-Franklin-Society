@@ -227,8 +227,9 @@ export class MotionService {
     private resolveByDeadline(m: Motion): void {
         const rule       = m.voteRuleId ? getVoteRule(m.voteRuleId) : null;
         const legitimacy = rule?.legitimacy ?? "absolute-majority";
-        const needed     = this.getNeededApprovals(m);
         const eligible   = this.eligibleCount(m);
+        const needed     = this.getNeededApprovals(m);
+        const denominator = legitimacy === "majority-of-votes" ? m.votes.length : eligible;
 
         m.outcome    = m.approvalCount >= needed ? "passed" : "failed";
         m.stage      = "resolved";
@@ -237,7 +238,7 @@ export class MotionService {
         if (legitimacy === "petition") {
             m.outcomeNote = `Resolved at deadline. ${m.approvalCount}/${needed} approvals received.`;
         } else {
-            m.outcomeNote = `Resolved at deadline. ${m.approvalCount}/${eligible} approved (needed ${needed}).`;
+            m.outcomeNote = `Resolved at deadline. ${m.approvalCount}/${denominator} approved (needed ${needed}).`;
         }
 
         if (m.outcome === "passed") effectRegistry.dispatch(m);
@@ -252,8 +253,10 @@ export class MotionService {
     private checkResolution(m: Motion): void {
         const rule       = m.voteRuleId ? getVoteRule(m.voteRuleId) : null;
         const legitimacy = rule?.legitimacy ?? "absolute-majority";
-        const needed     = this.getNeededApprovals(m);
         const eligible   = this.eligibleCount(m);
+        const needed     = this.getNeededApprovals(m);
+
+        const denominator = legitimacy === "majority-of-votes" ? m.votes.length : eligible;
 
         // Early pass
         if (m.approvalCount >= needed) {
@@ -263,7 +266,7 @@ export class MotionService {
             if (legitimacy === "petition") {
                 m.outcomeNote = `Petition passed with ${m.approvalCount} approval${m.approvalCount !== 1 ? "s" : ""}.`;
             } else {
-                m.outcomeNote = `Passed with ${m.approvalCount}/${eligible} approvals (needed ${needed}).`;
+                m.outcomeNote = `Passed with ${m.approvalCount}/${denominator} approvals (needed ${needed}).`;
             }
             effectRegistry.dispatch(m);
             this.loader.save(m);
@@ -271,7 +274,7 @@ export class MotionService {
             return;
         }
 
-        // Early rejection for absolute-majority: mathematically impossible to reach threshold
+        // Early rejection only possible for absolute rules (fixed denominator)
         if (legitimacy === "absolute-majority") {
             const remaining = eligible - m.votes.length;
             if (m.approvalCount + remaining < needed) {
@@ -283,12 +286,16 @@ export class MotionService {
                 try { CommunityLogService.getInstance().write("motion-failed", `Motion failed: ${m.title}`, { refId: m.id }); } catch { /* */ }
             }
         }
+        // majority-of-votes: denominator changes with each vote, no early rejection possible
     }
 
     private getNeededApprovals(m: Motion): number {
-        const eligible = this.eligibleCount(m);
         const rule = getVoteRule(m.voteRuleId ?? "absolute-majority");
         if (rule.legitimacy === "petition") return m.minApprovals ?? 1;
-        return Math.ceil(eligible * (rule.thresholdFraction ?? 0.51));
+        if (rule.legitimacy === "majority-of-votes") {
+            return Math.ceil(m.votes.length * (rule.thresholdFraction ?? 0.51));
+        }
+        // absolute-majority: fraction of all eligible voters
+        return Math.ceil(this.eligibleCount(m) * (rule.thresholdFraction ?? 0.51));
     }
 }

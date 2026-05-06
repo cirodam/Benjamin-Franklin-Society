@@ -3,7 +3,7 @@ import { PersonService } from "../person/PersonService.js";
 import { Person } from "../person/Person.js";
 import { DocumentLoader } from "../governance/DocumentLoader.js";
 import { CommunityIdentityStore } from "../CommunityIdentityStore.js";
-import { makeDefaultCharter } from "../governance/CharterDefaults.js";
+import { makeDefaultCharter } from "../governance/defaults/CharterDefaults.js";
 
 // ── Sample population seeder ──────────────────────────────────────────────────
 

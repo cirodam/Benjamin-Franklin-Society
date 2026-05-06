@@ -18,8 +18,8 @@ export class CommunityIdentityStore {
     private get db() { return CommunityDb.getInstance().db; }
 
     get(): CommunityIdentity | null {
-        const row = this.db.prepare(`SELECT value FROM singleton_records WHERE key = ?`).get(KEY) as { value: string } | undefined;
-        return row ? JSON.parse(row.value) as CommunityIdentity : null;
+        const row = this.db.prepare(`SELECT data FROM singleton_records WHERE key = ?`).get(KEY) as { data: string } | undefined;
+        return row ? JSON.parse(row.data) as CommunityIdentity : null;
     }
 
     get name(): string { return this.get()?.name ?? ""; }
@@ -34,8 +34,8 @@ export class CommunityIdentityStore {
         if (!trimmedName) throw new Error("Community name cannot be empty.");
         const data = JSON.stringify({ name: trimmedName, handle: trimmed });
         this.db.prepare(`
-            INSERT INTO singleton_records (key, value) VALUES (?, ?)
-            ON CONFLICT(key) DO UPDATE SET value = excluded.value
+            INSERT INTO singleton_records (key, data) VALUES (?, ?)
+            ON CONFLICT(key) DO UPDATE SET data = excluded.data
         `).run(KEY, data);
     }
 }

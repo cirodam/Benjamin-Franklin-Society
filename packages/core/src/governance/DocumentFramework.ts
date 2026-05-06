@@ -9,22 +9,103 @@
 // type can have parameters — the constitution uses this to drive monetary policy,
 // governance thresholds, etc.
 
+// ── Directives ────────────────────────────────────────────────────────────────
+//
+// Each section may carry one or more directives — machine-readable instructions
+// that tell the software what the section does.  Directives are declarative and
+// side-effect-free; the reconciler reads them to determine desired state.
+//
+// Vocabulary:
+//   authority.define  <id> <kind> <defaultVoteRuleId> <description>
+//   authority.grant   <id> <action> <voteRuleId>
+//   parameter.define  <key> <value> <immutable> [min] [max] <description>
+//   document.require  <type> [description]
+//
+// Bylaws and ordinances may NOT carry authority.define or authority.grant
+// directives — those are reserved for constitution and charter documents.
+
+export type DirectiveVerb =
+    | "authority.define"
+    | "authority.grant"
+    | "parameter.define"
+    | "document.require";
+
+export interface DocumentDirective {
+    verb: DirectiveVerb;
+    /** Positional arguments, parsed left-to-right per verb spec. */
+    args: string[];
+}
+
+// ── Parsed directive shapes (used by the reconciler) ─────────────────────────
+
+export interface AuthorityDefineDirective {
+    id:                string;
+    kind:              "assembly" | "committee" | "leader-pool" | "membership" | "referendum";
+    defaultVoteRuleId: string;
+    description:       string;
+}
+
+export interface AuthorityGrantDirective {
+    authorityId: string;
+    action:      string;
+    voteRuleId:  string;
+}
+
+export interface ParameterDefineDirective {
+    key:         string;
+    value:       number | boolean;
+    immutable:   boolean;
+    min?:        number;
+    max?:        number;
+    description: string;
+}
+
+/**
+ * Parse a raw DocumentDirective into a typed shape.
+ * Returns null if the directive is malformed.
+ */
+export function parseDirective(
+    d: DocumentDirective,
+): AuthorityDefineDirective | AuthorityGrantDirective | ParameterDefineDirective | null {
+    const a = d.args;
+    switch (d.verb) {
+        case "authority.define":
+            if (a.length < 4) return null;
+            return { id: a[0], kind: a[1] as AuthorityDefineDirective["kind"], defaultVoteRuleId: a[2], description: a.slice(3).join(" ") };
+        case "authority.grant":
+            if (a.length < 3) return null;
+            return { authorityId: a[0], action: a[1], voteRuleId: a[2] };
+        case "parameter.define": {
+            if (a.length < 4) return null;
+            const rawValue = a[1];
+            const value: number | boolean =
+                rawValue === "true"  ? true  :
+                rawValue === "false" ? false :
+                parseFloat(rawValue);
+            const immutable = a[2] === "true";
+            // args[3] may be min, [4] may be max, rest is description
+            // Convention: if arg parses as a number it's a constraint, else start of description
+            let idx = 3;
+            let min: number | undefined;
+            let max: number | undefined;
+            if (idx < a.length && !isNaN(Number(a[idx]))) { min = Number(a[idx++]); }
+            if (idx < a.length && !isNaN(Number(a[idx]))) { max = Number(a[idx++]); }
+            const description = a.slice(idx).join(" ");
+            return { key: a[0], value, immutable, min, max, description };
+        }
+        case "document.require":
+            return null; // not yet consumed by reconciler
+    }
+}
+
 export interface DocumentSection {
     /** Hierarchical id, e.g. "I.1", "IV.2" */
     id:             string;
     title?:         string;
     /** Prose text. May contain {paramKey} slots for live parameter embedding. */
     body:           string;
-    /** Keys extracted from {paramKey} slots in body. Stored for quick lookup. */
-    paramKeys:      string[];
     /** ISO 8601 date when this section came into force. */
     adoptedAt?:     string;
-    /**
-     * ISO 8601 date after which this section automatically lapses.
-     * null / undefined = no sunset; section is permanent until repealed.
-     * A sunset is a deliberate drafting choice, not a default.
-     */
-    sunsetAt?:      string | null;
     /**
      * Authors' explanation of why this section exists and what it is trying
      * to accomplish. Displayed to members alongside the section text so the
@@ -37,6 +118,12 @@ export interface DocumentSection {
      * null / undefined = fall back to the document's voteRuleId.
      */
     voteRuleId?:    string | null;
+    /**
+     * Machine-readable instructions that declare what this section does.
+     * Read by the reconciler to determine desired governance state.
+     * Only valid in constitution and charter documents.
+     */
+    directives?:    DocumentDirective[];
 }
 
 export interface DocumentArticle {
@@ -68,21 +155,11 @@ export interface DocumentAmendment {
     amendedAt:  string;
 }
 
-/** Maps a governance action kind to the authority and vote rule required for it. */
-export interface ActionAuthority {
-    readonly action:      string;
-    /** Authority id (e.g. "assembly", "referendum", "council:market"). */
-    readonly body:        string;
-    readonly description: string;
-    /** Vote rule id from the VOTE_RULES registry in @ecf/core. */
-    readonly voteRuleId:  string;
-}
-
 // ── Document ──────────────────────────────────────────────────────────────────
 
 export interface GoverningDocument {
     id:          string;
-    /** "constitution" | "bylaw" | "charter" | any future type */
+    /** "constitution" | "bylaw" | "charter" | "ordinance" */
     type:        string;
     title:       string;
     preamble?:   string;
@@ -96,9 +173,13 @@ export interface GoverningDocument {
      * Individual sections may override via their own voteRuleId.
      */
     voteRuleId:  string;
-    /** Which domain/pool this document applies within. null = community-wide. */
+    /** Which domain this document applies within. null = community-wide. */
     domainId?:   string | null;
-    /** ISO 8601 datetime after which this document is considered expired. */
+    /**
+     * ISO 8601 datetime after which this document is considered expired.
+     * Only meaningful on ordinance documents — the reconciler ignores expired
+     * documents entirely when building desired state.
+     */
     expiresAt?:  string | null;
     /**
      * If true, this document cannot be modified via the normal document API.
@@ -111,11 +192,6 @@ export interface GoverningDocument {
     parameters?:   Record<string, DocumentParameter>;
     /** Log of all parameter amendments, newest last. */
     amendments?:   DocumentAmendment[];
-    /**
-     * Maps governance action kinds to the authority and vote rule required.
-     * Present on the constitution; may be present on domain statutes.
-     */
-    authorityMap?: ActionAuthority[];
 }
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
@@ -132,3 +208,20 @@ export function extractParamKeys(body: string): string[] {
     }
     return [...seen];
 }
+
+/**
+ * Collect all directives from all sections across a document, in article/section order.
+ */
+export function collectDirectives(doc: GoverningDocument): { sectionId: string; directive: DocumentDirective }[] {
+    const result: { sectionId: string; directive: DocumentDirective }[] = [];
+    for (const article of doc.articles) {
+        for (const section of article.sections) {
+            for (const directive of section.directives ?? []) {
+                result.push({ sectionId: section.id, directive });
+            }
+        }
+    }
+    return result;
+}
+
+

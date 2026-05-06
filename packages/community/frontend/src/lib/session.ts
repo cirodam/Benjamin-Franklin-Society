@@ -73,7 +73,7 @@ export const session = createSessionStore();
 /** Set to true when any API call returns 401, so the login page can explain why. */
 export const sessionExpired = writable(false);
 
-export type Page = "dashboard" | "directory" | "constitution" | "settings" | "domains" | "domain" | "unit" | "leadership" | "assembly" | "pool" | "motion" | "applications" | "charter" | "budget" | "associations" | "association" | "add-person" | "locations" | "proposals" | "proposal" | "nodes" | "central-bank" | "social-insurance" | "vacancies" | "vacancy-detail" | "nominations" | "connections" | "schedule" | "documents" | "bylaw" | "section" | "timeline" | "calendar" | "registry" | "role-type" | "unit-type-detail" | "propose";
+export type Page = "dashboard" | "directory" | "constitution" | "settings" | "domains" | "domain" | "unit" | "leadership" | "assembly" | "pool" | "motion" | "applications" | "charter" | "budget" | "associations" | "association" | "add-person" | "locations" | "proposals" | "proposal" | "nodes" | "central-bank" | "social-insurance" | "vacancies" | "vacancy-detail" | "connections" | "schedule" | "documents" | "bylaw" | "section" | "timeline" | "calendar" | "registry" | "role-type" | "unit-type-detail" | "propose" | "authority";
 
 function createPageStore() {
     const { subscribe, set } = writable<Page>("dashboard");
@@ -96,6 +96,9 @@ export const selectedProposalId = writable<string | null>(null);
 
 /** ID of the pool currently being viewed in the pool detail page. */
 export const selectedPoolId = writable<string | null>(null);
+
+/** ID of the authority currently being viewed in the authority detail page. */
+export const selectedAuthorityId = writable<string | null>(null);
 
 /** ID of the motion currently being viewed in the motion detail page. */
 export const selectedMotionId = writable<string | null>(null);

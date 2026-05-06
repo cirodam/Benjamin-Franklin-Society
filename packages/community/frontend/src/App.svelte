@@ -40,6 +40,7 @@ import MotionPage        from "./pages/MotionPage.svelte";
     import RegistryPage        from "./pages/RegistryPage.svelte";
     import RoleTypePage        from "./pages/RoleTypePage.svelte";
     import UnitTypePage        from "./pages/UnitTypePage.svelte";
+    import AuthorityPage       from "./pages/AuthorityPage.svelte";
 
     type AppState = "loading" | "setup" | "login" | "apply" | "app";
     let appState: AppState = $state("loading");
@@ -163,6 +164,8 @@ import MotionPage        from "./pages/MotionPage.svelte";
             <RoleTypePage />
         {:else if $currentPage === "unit-type-detail"}
             <UnitTypePage />
+        {:else if $currentPage === "authority"}
+            <AuthorityPage />
         {/if}
     </main>
     <BottomNav />

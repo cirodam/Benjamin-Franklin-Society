@@ -51,9 +51,8 @@ export interface DocumentSection {
     id:             string;
     title?:         string;
     body:           string;
-    paramKeys:      string[];
     rationale?:     string;
-    sunsetAt?:      string | null;
+
     /** Vote rule for amending/repealing this section. null = use document fallback. */
     voteRuleId?:    string | null;
 }
@@ -74,13 +73,6 @@ export interface DocumentAmendmentDto {
     amendedAt:  string;
 }
 
-export interface ActionAuthority {
-    action:      string;
-    body:        string;
-    description: string;
-    voteRuleId:  string;
-}
-
 export interface GoverningDocumentDto {
     id:           string;
     type:         string;
@@ -97,7 +89,6 @@ export interface GoverningDocumentDto {
     articles:     DocumentArticle[];
     parameters?:  Record<string, DocumentParameter>;
     amendments?:  DocumentAmendmentDto[];
-    authorityMap?: ActionAuthority[];
 }
 
 /** @deprecated Use GoverningDocumentDto */
@@ -1274,13 +1265,24 @@ export type MotionOutcome = "passed" | "failed" | "withdrawn" | "referred";
 
 // ── Authorities ───────────────────────────────────────────────────────────────
 
+/** A single power granted to an authority by an authority.grant directive. */
+export interface AuthorityPower {
+    action:     string;
+    voteRuleId: string;
+    /** Section id that declared the grant, e.g. "II.5" */
+    sectionId:  string;
+    /** Document id that contains the granting section, e.g. "constitution" */
+    docId:      string;
+}
+
 export interface AuthorityDto {
     id:                string;
     name:              string;
     description?:      string;
-    type:              "builtin" | "pool";
-    poolId?:           string;
+    kind:              string;
     defaultVoteRuleId: string;
+    /** Powers granted to this authority by authority.grant directives in active documents. */
+    powers:            AuthorityPower[];
 }
 
 export async function getAuthorities(): Promise<AuthorityDto[]> {
