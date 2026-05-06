@@ -1,5 +1,5 @@
 import { CommunityDb } from "../CommunityDb.js";
-import { type Authority, BUILTIN_AUTHORITIES } from "./Authority.js";
+import { type Authority, BUILTIN_AUTHORITIES } from "@ecf/core";
 
 export class AuthorityLoader {
     private static instance: AuthorityLoader;

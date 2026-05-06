@@ -10,10 +10,10 @@ import { RoleTypeLoader } from "./common/RoleTypeLoader.js";
 import { UnitType } from "./common/domain/UnitType.js";
 import { UnitTypeLoader } from "./common/domain/UnitTypeLoader.js";
 import { UnitTemplateRegistry } from "./common/domain/UnitTemplateRegistry.js";
-import { LeaderPool } from "./governance/LeaderPool.js";
+import { LeaderPool } from "@ecf/core";
 import { LeaderPoolLoader } from "./governance/LeaderPoolLoader.js";
 import { AuthorityLoader } from "./governance/AuthorityLoader.js";
-import { poolAuthorityId } from "./governance/Authority.js";
+import { poolAuthorityId } from "@ecf/core";
 import { BankClient } from "@ecf/core";
 import { PersonService } from "./person/PersonService.js";
 

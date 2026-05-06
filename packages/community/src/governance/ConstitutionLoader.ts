@@ -1,5 +1,5 @@
 import { CommunityDb } from "../CommunityDb.js";
-import { type GoverningDocument, extractParamKeys } from "../common/DocumentFramework.js";
+import { type GoverningDocument, extractParamKeys } from "@ecf/core";
 import {
     type ConstitutionMetadata,
     type ConstitutionalParameter,

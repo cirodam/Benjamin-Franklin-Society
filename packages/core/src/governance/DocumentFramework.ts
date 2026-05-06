@@ -4,32 +4,6 @@
 // Articles contain sections whose body prose may embed {paramKey} slots that
 // render as live parameter values in the UI.
 
-// ── Authority ─────────────────────────────────────────────────────────────────
-
-export interface Authority {
-    id:          string;
-    label:       string;
-    description: string;
-}
-
-/**
- * Built-in authorities. Domain councils ("council:<domainId>") are added at
- * runtime when domains are created — derived from domain records, not stored
- * as a separate table.
- */
-export const BUILT_IN_AUTHORITIES: Record<string, Authority> = {
-    community: {
-        id:          "community",
-        label:       "Whole Community",
-        description: "Full membership via referendum. Documents owned here require a referendum to amend.",
-    },
-    assembly: {
-        id:          "assembly",
-        label:       "Assembly",
-        description: "The randomly drawn assembly. Documents owned here can be amended by assembly vote.",
-    },
-};
-
 export interface DocumentSection {
     /** Hierarchical id, e.g. "I.1", "IV.2" */
     id:             string;

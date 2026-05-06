@@ -1,4 +1,4 @@
-import type { GoverningDocument } from "../common/DocumentFramework.js";
+import type { GoverningDocument } from "@ecf/core";
 
 /**
  * Returns the default charter document for a Benjamin Franklin Society.

@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { MotionService } from "../governance/MotionService.js";
-import { effectRegistry } from "../governance/EffectRegistry.js";
-import { Motion } from "../governance/Motion.js";
+import { effectRegistry } from "@ecf/core";
+import { Motion } from "@ecf/core";
 import { ConstitutionLoader } from "../governance/ConstitutionLoader.js";
 
 const motionSvc = () => MotionService.getInstance();

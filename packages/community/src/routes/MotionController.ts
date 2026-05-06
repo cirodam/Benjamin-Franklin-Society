@@ -1,9 +1,9 @@
 import { Request, Response } from "express";
 import { MotionService } from "../governance/MotionService.js";
-import { Motion } from "../governance/Motion.js";
+import { Motion } from "@ecf/core";
 import { PersonService } from "../person/PersonService.js";
 import { ConstitutionLoader } from "../governance/ConstitutionLoader.js";
-import { effectRegistry } from "../governance/EffectRegistry.js";
+import { effectRegistry } from "@ecf/core";
 import { AuthorityService } from "../governance/AuthorityService.js";
 import { getVoteRule, listVoteRules } from "@ecf/core";
 

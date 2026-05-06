@@ -1,5 +1,5 @@
 import { CommunityDb } from "../CommunityDb.js";
-import { Motion, type MotionData } from "./Motion.js";
+import { Motion, type MotionData } from "@ecf/core";
 
 export class MotionLoader {
     private get db() { return CommunityDb.getInstance().db; }

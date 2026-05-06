@@ -1,4 +1,4 @@
-import { type DocumentArticle } from "../common/DocumentFramework.js";
+import { type DocumentArticle } from "@ecf/core";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

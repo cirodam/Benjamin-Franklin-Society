@@ -5,7 +5,7 @@ import { FunctionalUnit } from "../common/domain/FunctionalUnit.js";
 import { UnitTemplateRegistry } from "../common/domain/UnitTemplateRegistry.js";
 import { CommunityRole } from "../common/CommunityRole.js";
 import { RoleType } from "../common/RoleType.js";
-import { LeaderPool } from "../governance/LeaderPool.js";
+import { LeaderPool } from "@ecf/core";
 import type { BudgetCategory } from "../common/domain/FunctionalDomain.js";
 import { PersonService } from "../person/PersonService.js";
 import { LocationService } from "../location/LocationService.js";

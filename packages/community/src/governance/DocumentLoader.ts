@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 import { CommunityDb } from "../CommunityDb.js";
-import { type GoverningDocument, type DocumentArticle, type DocumentSection, extractParamKeys } from "../common/DocumentFramework.js";
+import { type GoverningDocument, type DocumentArticle, type DocumentSection, extractParamKeys } from "@ecf/core";
 
 export class DocumentLoader {
     private get db() { return CommunityDb.getInstance().db; }

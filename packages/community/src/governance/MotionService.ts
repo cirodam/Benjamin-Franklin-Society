@@ -1,8 +1,8 @@
 import { randomUUID } from "crypto";
-import { Motion, type MotionOutcome, type CommentKind } from "./Motion.js";
+import { Motion, type MotionOutcome, type CommentKind } from "@ecf/core";
 import { MotionLoader } from "./MotionLoader.js";
 import { AuthorityService } from "./AuthorityService.js";
-import { effectRegistry } from "./EffectRegistry.js";
+import { effectRegistry } from "@ecf/core";
 import { CommunityLogService } from "../log/CommunityLogService.js";
 import { getVoteRule } from "@ecf/core";
 

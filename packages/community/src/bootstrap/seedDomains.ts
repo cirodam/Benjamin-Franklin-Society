@@ -45,7 +45,7 @@ import { GovernanceUnitTemplates } from "../domains/governance/GovernanceUnitTem
 import { MediationDomain } from "../domains/mediation/MediationDomain.js";
 import { MediationUnitTemplates } from "../domains/mediation/MediationUnitTemplates.js";
 import { CommunityRole } from "../common/CommunityRole.js";
-import { LeaderPool } from "../governance/LeaderPool.js";
+import { LeaderPool } from "@ecf/core";
 
 /**
  * Seed role types and register all functional domains + unit templates on first boot.

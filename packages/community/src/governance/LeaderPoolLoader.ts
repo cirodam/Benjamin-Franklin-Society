@@ -1,5 +1,5 @@
 import { CommunityDb } from "../CommunityDb.js";
-import { LeaderPool } from "./LeaderPool.js";
+import { LeaderPool } from "@ecf/core";
 
 interface PoolRecord {
     id: string; name: string; description: string;

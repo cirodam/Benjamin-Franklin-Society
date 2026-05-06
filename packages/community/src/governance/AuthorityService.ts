@@ -2,7 +2,7 @@ import { CommunityDb } from "../CommunityDb.js";
 import { PersonService } from "../person/PersonService.js";
 import { DomainService } from "../DomainService.js";
 import { AuthorityLoader } from "./AuthorityLoader.js";
-import { type Authority, isPoolAuthorityId, poolIdFromAuthorityId } from "./Authority.js";
+import { type Authority, isPoolAuthorityId, poolIdFromAuthorityId } from "@ecf/core";
 
 const ASSEMBLY_KEY = "assembly_term";
 

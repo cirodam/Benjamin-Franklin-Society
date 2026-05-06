@@ -3,9 +3,8 @@
  * Import this module once at startup (in index.ts) to register all effects.
  */
 
-import { effectRegistry } from "../EffectRegistry.js";
+import { effectRegistry, LeaderPool } from "@ecf/core";
 import { ConstitutionLoader } from "../ConstitutionLoader.js";
-import { LeaderPool } from "../LeaderPool.js";
 import { Person } from "../../person/Person.js";
 import { PersonService } from "../../person/PersonService.js";
 import { DomainService } from "../../DomainService.js";

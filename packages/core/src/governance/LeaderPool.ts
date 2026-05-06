@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 
 /**
- * A LeaderPool is a named group of community members who collectively govern
+ * A LeaderPool is a named group of members who collectively govern
  * a FunctionalDomain. Pools are referenced by ID from FunctionalDomain.poolId.
  *
  * Membership is stored as a flat list of personIds. The service layer resolves

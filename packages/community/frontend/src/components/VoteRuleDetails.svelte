@@ -14,15 +14,6 @@
     const inherited   = $derived(!ruleId && !!fallbackId);
     const rule        = $derived(rules.find(r => r.id === effectiveId) ?? null);
 
-    function legitimacyLabel(r: VoteRule): string {
-        switch (r.legitimacy) {
-            case "absolute-majority":  return "Absolute majority";
-            case "majority-of-votes":  return "Simple majority";
-            case "petition":           return "Petition";
-            default:                   return r.legitimacy;
-        }
-    }
-
     function legitimacyDetail(r: VoteRule): string {
         if (r.legitimacy === "petition") return "requires signatures, no vote";
         const pct = r.thresholdFraction !== undefined
@@ -36,7 +27,7 @@
 {#if rule}
     <div class="vrd" class:inherited>
         <div class="vrd-top">
-            <span class="vrd-label">{legitimacyLabel(rule)}</span>
+            <span class="vrd-label">{rule.label}</span>
             <span class="vrd-sep">·</span>
             <span class="vrd-detail">{legitimacyDetail(rule)}</span>
             {#if inherited}

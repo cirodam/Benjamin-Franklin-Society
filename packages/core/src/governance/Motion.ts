@@ -3,10 +3,7 @@ import {
     AssemblyMotionData,
     type MotionStage,
     type MotionOutcome,
-} from "@ecf/core";
-
-// Re-export shared types so existing consumers of this module keep working.
-export type { MotionStage, MotionOutcome };
+} from "./AssemblyMotion.js";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -38,22 +35,22 @@ export class Motion extends AssemblyMotion<MotionVote, MotionComment> {
     readonly proposerId: string;
 
     constructor(opts: {
-        authorityId:     string;
-        title:           string;
-        description:     string;
-        proposerId:      string;
-        proposerHandle:  string;
-        parentId?:       string | null;
-        kind?:           string | null;
-        payload?:        string | null;
-        premises?:       string | null;
+        authorityId:      string;
+        title:            string;
+        description:      string;
+        proposerId:       string;
+        proposerHandle:   string;
+        parentId?:        string | null;
+        kind?:            string | null;
+        payload?:         string | null;
+        premises?:        string | null;
         expectedOutcome?: string | null;
-        id?:             string;
-        createdAt?:      string;
+        id?:              string;
+        createdAt?:       string;
     }) {
         // Pass authorityId as body to the base class (body is the authority id).
         super({ ...opts, body: opts.authorityId });
-        // All community motions follow a single lifecycle starting at "draft".
+        // All motions follow a single lifecycle starting at "draft".
         this.stage           = "draft";
         this.proposerId      = opts.proposerId;
         this.premises        = opts.premises        ?? null;
@@ -88,4 +85,3 @@ export class Motion extends AssemblyMotion<MotionVote, MotionComment> {
         return m;
     }
 }
-
