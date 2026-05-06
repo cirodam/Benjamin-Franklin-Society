@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { MotionService } from "../governance/MotionService.js";
 import { Motion } from "@ecf/core";
 import { PersonService } from "../person/PersonService.js";
-import { ConstitutionLoader } from "../governance/ConstitutionLoader.js";
+import { DocumentLoader } from "../governance/DocumentLoader.js";
 import { effectRegistry } from "@ecf/core";
 import { AuthorityService } from "../governance/AuthorityService.js";
 import { getVoteRule, listVoteRules } from "@ecf/core";
@@ -119,7 +119,7 @@ export function submitForDeliberation(req: AuthedRequest, res: Response): void {
 
     // If the motion kind is a constitutional action, the vote rule is mandated.
     const constitutionalRule = motion.kind
-        ? ConstitutionLoader.getInstance().getRequiredVoteRule(motion.kind)
+        ? new DocumentLoader().getRequiredVoteRule("constitution", motion.kind)
         : null;
 
     let resolvedRuleId: string;

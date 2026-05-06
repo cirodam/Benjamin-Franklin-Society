@@ -40,10 +40,10 @@ export interface PersonDto {
     appPermissions?: Record<string, string[]>;
 }
 
-export interface ConstitutionParam {
-    value: number | boolean;
-    immutable: boolean;
-    description: string;
+export interface DocumentParameter {
+    value:        number | boolean;
+    immutable:    boolean;
+    description:  string;
     constraints?: { min?: number; max?: number };
 }
 
@@ -65,44 +65,45 @@ export interface DocumentArticle {
     sections:  DocumentSection[];
 }
 
-export interface GoverningDocumentDto {
-    id:          string;
-    type:        string;
-    title:       string;
-    preamble?:   string;
-    authorityId: string;
-    /** Default vote rule for amending sections. Sections may override with their own voteRuleId. */
-    voteRuleId:  string;
-    domainId?:   string | null;
-    adoptedAt:   string;
-    version:     number;
-    expiresAt?:  string | null;
-    articles:    DocumentArticle[];
-}
-
-export interface ConstitutionAmendmentDto {
+export interface DocumentAmendmentDto {
     version:    number;
     parameter:  string;
     oldValue:   number | boolean;
     newValue:   number | boolean;
-    proposalId: string;
+    motionId:   string;
     amendedAt:  string;
 }
 
-export interface ConstitutionMetaDto {
-    documentId:      string;
-    version:         number;
-    communityName:   string;
-    communityHandle: string;
-    parameters:      Record<string, ConstitutionParam>;
-    amendments:      ConstitutionAmendmentDto[];
-    authorityMap:    { action: string; body: string; description: string; voteRuleId?: string }[];
+export interface ActionAuthority {
+    action:      string;
+    body:        string;
+    description: string;
+    voteRuleId:  string;
 }
 
-export interface ConstitutionDto {
-    doc:  GoverningDocumentDto;
-    meta: ConstitutionMetaDto;
+export interface GoverningDocumentDto {
+    id:           string;
+    type:         string;
+    title:        string;
+    preamble?:    string;
+    authorityId:  string;
+    /** Default vote rule for amending sections. Sections may override with their own voteRuleId. */
+    voteRuleId:   string;
+    domainId?:    string | null;
+    adoptedAt:    string;
+    version:      number;
+    expiresAt?:   string | null;
+    readonly?:    boolean;
+    articles:     DocumentArticle[];
+    parameters?:  Record<string, DocumentParameter>;
+    amendments?:  DocumentAmendmentDto[];
+    authorityMap?: ActionAuthority[];
 }
+
+/** @deprecated Use GoverningDocumentDto */
+export type ConstitutionParam       = DocumentParameter;
+/** @deprecated Use DocumentAmendmentDto */
+export type ConstitutionAmendmentDto = DocumentAmendmentDto;
 
 // ── Economics ─────────────────────────────────────────────────────────────────
 
@@ -461,14 +462,17 @@ export async function revokePersonApp(handle: string, app: string): Promise<Pers
 
 // ── Constitution ──────────────────────────────────────────────────────────────
 
-export async function getConstitution(): Promise<ConstitutionDto> {
-    const res = await fetch("/api/constitution");
+export async function getConstitution(): Promise<GoverningDocumentDto> {
+    const res = await fetch("/api/documents/constitution");
     if (!res.ok) throw new Error("Failed to load constitution");
-    return res.json() as Promise<ConstitutionDto>;
+    return res.json() as Promise<GoverningDocumentDto>;
 }
 
+/** @deprecated Use getConstitution() — now returns GoverningDocumentDto directly */
+export const getConstitutionLegacy = getConstitution;
+
 export async function updateConstitutionParameter(key: string, value: number | boolean): Promise<void> {
-    const res = await apiFetch(`/api/constitution/parameters/${encodeURIComponent(key)}`, {
+    const res = await apiFetch(`/api/documents/constitution/parameters/${encodeURIComponent(key)}`, {
         method: "PATCH",
         body:   JSON.stringify({ value }),
     });
@@ -478,8 +482,8 @@ export async function updateConstitutionParameter(key: string, value: number | b
     }
 }
 
-export async function updateConstitutionSection(sectionId: string, body: string): Promise<ConstitutionDto> {
-    const res = await apiFetch(`/api/constitution/sections/${encodeURIComponent(sectionId)}`, {
+export async function updateConstitutionSection(sectionId: string, body: string): Promise<GoverningDocumentDto> {
+    const res = await apiFetch(`/api/documents/constitution/sections/${encodeURIComponent(sectionId)}`, {
         method: "PATCH",
         body:   JSON.stringify({ body }),
     });
@@ -487,28 +491,13 @@ export async function updateConstitutionSection(sectionId: string, body: string)
         const b = await res.json().catch(() => ({})) as { error?: string };
         throw new Error(b.error ?? "Failed to update section");
     }
-    return res.json() as Promise<ConstitutionDto>;
+    return res.json() as Promise<GoverningDocumentDto>;
 }
 
 // ── Bylaws ────────────────────────────────────────────────────────────────────
 
-export interface BylawDto {
-    id:          string;
-    type:        string;
-    title:       string;
-    preamble?:   string;
-    articles:    DocumentArticle[];
-    adoptedAt:   string;
-    version:     number;
-    /** Authority id that controls amendment of this document. */
-    authorityId: string;
-    /** Default vote rule for amending sections. Sections may override with their own voteRuleId. */
-    voteRuleId:  string;
-    /** Which domain/pool this document applies within. null = community-wide. */
-    domainId?:   string | null;
-    /** ISO 8601 datetime after which this bylaw is considered expired. null/undefined = no expiry. */
-    expiresAt?:  string | null;
-}
+/** @deprecated Use GoverningDocumentDto */
+export type BylawDto = GoverningDocumentDto;
 
 export async function listBylaws(): Promise<BylawDto[]> {
     const res = await apiFetch("/api/bylaws");

@@ -5,7 +5,9 @@ import { PersonService } from "../person/PersonService.js";
 import { CentralBank } from "../domains/central_bank/CentralBank.js";
 import { SocialInsuranceBank } from "../domains/social_insurance/SocialInsuranceBank.js";
 import { CommunityTreasury } from "../domains/community_treasury/CommunityTreasury.js";
-import { ConstitutionLoader } from "../governance/ConstitutionLoader.js";
+import { DocumentLoader } from "../governance/DocumentLoader.js";
+const docLoader = new DocumentLoader();
+const cp = <T extends number | boolean>(key: string) => docLoader.getParam<T>("constitution", key);
 import { CommunityLogService } from "../log/CommunityLogService.js";
 
 /**
@@ -29,7 +31,6 @@ export function registerMonetaryHandlers(bank: BankClient): void {
         const centralBank  = CentralBank.getInstance();
         const siBank       = SocialInsuranceBank.getInstance();
         const treasury     = CommunityTreasury.getInstance();
-        const constitution = ConstitutionLoader.getInstance();
 
         try {
             // Don't open a second account if they already have one (e.g. access was revoked and re-granted)
@@ -48,14 +49,14 @@ export function registerMonetaryHandlers(bank: BankClient): void {
 
             const MS_PER_YEAR = 365.25 * 24 * 60 * 60 * 1000;
             const ageInYears  = Math.floor((Date.now() - person.birthDate.getTime()) / MS_PER_YEAR);
-            const endowment   = ageInYears * constitution.kinPerPersonYear;
+            const endowment   = ageInYears * cp<number>("kinPerPersonYear");
 
             if (endowment <= 0) {
                 logger.info(`[community] zero endowment for @${person.handle} (age ${ageInYears}) — skipping issuance`);
                 return;
             }
 
-            const poolAmount     = Math.floor(endowment * constitution.endowmentPoolFraction);
+            const poolAmount     = Math.floor(endowment * cp<number>("endowmentPoolFraction"));
             const treasuryAmount = endowment - poolAmount;
 
             await centralBank.issue(endowment, treasury.accountId,          "join endowment — community fund");
@@ -81,7 +82,6 @@ export function registerMonetaryHandlers(bank: BankClient): void {
     PersonService.getInstance().onPersonDischarged(async (person) => {
         const centralBank  = CentralBank.getInstance();
         const treasury     = CommunityTreasury.getInstance();
-        const constitution = ConstitutionLoader.getInstance();
 
         if (!centralBank.isReady() || !treasury.isReady()) {
             logger.warn(`[community] monetary institutions not ready — skipping discharge settlement for @${person.handle}`);
@@ -97,7 +97,7 @@ export function registerMonetaryHandlers(bank: BankClient): void {
 
             const MS_PER_YEAR   = 365.25 * 24 * 60 * 60 * 1000;
             const ageInYears    = Math.floor((Date.now() - person.birthDate.getTime()) / MS_PER_YEAR);
-            const targetRetire  = ageInYears * constitution.kinPerPersonYear;
+            const targetRetire  = ageInYears * cp<number>("kinPerPersonYear");
             const balance       = memberAccount.amount;
 
             if (balance > 0) {
@@ -138,7 +138,6 @@ export function registerMonetaryHandlers(bank: BankClient): void {
         const centralBank  = CentralBank.getInstance();
         const siBank       = SocialInsuranceBank.getInstance();
         const treasury     = CommunityTreasury.getInstance();
-        const constitution = ConstitutionLoader.getInstance();
 
         if (!centralBank.isReady() || !siBank.isReady() || !treasury.isReady()) {
             logger.warn(`[community] monetary institutions not ready — skipping annual issuance for @${person.handle}`);
@@ -154,8 +153,8 @@ export function registerMonetaryHandlers(bank: BankClient): void {
 
             // All kin is issued into the community fund first; the fund then
             // distributes per policy: member fraction → member, remainder → insurance fund.
-            const annual       = constitution.kinPerPersonYear;
-            const memberAmount = Math.floor(annual * constitution.birthdayCirculationFraction);
+            const annual       = cp<number>("kinPerPersonYear");
+            const memberAmount = Math.floor(annual * cp<number>("birthdayCirculationFraction"));
             const poolAmount   = annual - memberAmount;
 
             await centralBank.issue(annual, treasury.accountId, "annual issuance — community fund");
@@ -180,14 +179,13 @@ export function registerMonetaryHandlers(bank: BankClient): void {
         const centralBank  = CentralBank.getInstance();
         const siBank       = SocialInsuranceBank.getInstance();
         const treasury     = CommunityTreasury.getInstance();
-        const constitution = ConstitutionLoader.getInstance();
         if (!centralBank.isReady() || !siBank.isReady() || !treasury.isReady()) {
             logger.warn("[community] monetary institutions not ready — skipping community dues collection");
             return;
         }
         treasury.collectDues(
-            constitution.communityDuesRate,
-            constitution.demurrageFloor,
+            cp<number>("communityDuesRate"),
+            cp<number>("demurrageFloor"),
             [centralBank.issuanceAccountId, siBank.poolAccountId],
         ).then(({ count }) => {
             logger.info(`[community] community dues collected from ${count} accounts`);
@@ -228,7 +226,6 @@ export function registerMonetaryHandlers(bank: BankClient): void {
     const MS_PER_YEAR = 365.25 * 24 * 60 * 60 * 1000;
     const runRetirementPayouts = (): void => {
         const siBank       = SocialInsuranceBank.getInstance();
-        const constitution = ConstitutionLoader.getInstance();
         const personSvc    = PersonService.getInstance();
 
         if (!siBank.isReady()) {
@@ -236,8 +233,8 @@ export function registerMonetaryHandlers(bank: BankClient): void {
             return;
         }
 
-        const retirementAge = constitution.retirementAge;
-        const payoutRate    = constitution.retirementPayoutRate;
+        const retirementAge = cp<number>("retirementAge");
+        const payoutRate    = cp<number>("retirementPayoutRate");
         const now           = Date.now();
 
         // Collect eligible persons; auto-flag anyone newly past retirement age.

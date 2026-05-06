@@ -1,6 +1,6 @@
 <script lang="ts">
     import { getConstitution, listPersons, listPools, listNominations, listBylaws, listRoleTypes, listUnitTypes, listDomains } from "../lib/api.js";
-    import type { ConstitutionDto, PersonDto, PoolDto, NominationDto, BylawDto, RoleTypeDto, UnitTypeDto, DomainDto } from "../lib/api.js";
+    import type { GoverningDocumentDto, PersonDto, PoolDto, NominationDto, RoleTypeDto, UnitTypeDto, DomainDto } from "../lib/api.js";
 
     let {
         kind,
@@ -11,17 +11,17 @@
     } = $props();
 
     // Lazy-loaded reference data
-    let constitution = $state<ConstitutionDto | null>(null);
+    let constitution = $state<GoverningDocumentDto | null>(null);
     let persons      = $state([] as PersonDto[]);
     let pools        = $state([] as PoolDto[]);
     let nominations  = $state([] as NominationDto[]);
-    let bylaws       = $state([] as BylawDto[]);
+    let bylaws       = $state([] as GoverningDocumentDto[]);
     let roleTypes    = $state([] as RoleTypeDto[]);
     let unitTypes    = $state([] as UnitTypeDto[]);
     let domains      = $state([] as DomainDto[]);
 
     $effect(() => {
-        if (kind === "amend-constitution" && !constitution) {
+        if (kind === "amend-document-parameter" && !constitution) {
             getConstitution().then(c => { constitution = c; }).catch(() => {});
         } else if ((kind === "suspend-member" || kind === "reinstate-member") && !persons.length) {
             listPersons().then(p => { persons = p; }).catch(() => {});
@@ -137,20 +137,20 @@
     let evtRecurrenceEndsAt = $state("");
 
     const amendParamInfo = $derived(
-        constitution && amendParam ? (constitution.meta.parameters[amendParam] ?? null) : null
+        constitution && amendParam ? (constitution.parameters?.[amendParam] ?? null) : null
     );
     const amendIsBoolean = $derived(amendParamInfo ? typeof amendParamInfo.value === "boolean" : false);
 
     // Sync local fields → payload
     $effect(() => {
-        if (kind === "amend-constitution") {
+        if (kind === "amend-document-parameter") {
             if (!amendParam || !amendParamInfo) { payload = {}; return; }
             if (amendIsBoolean) {
-                payload = { parameter: amendParam, newValue: amendBool === "true" };
+                payload = { docId: "constitution", parameter: amendParam, newValue: amendBool === "true" };
             } else {
                 const n = Number(amendNum);
                 if (!amendNum || isNaN(n)) { payload = {}; return; }
-                payload = { parameter: amendParam, newValue: n };
+                payload = { docId: "constitution", parameter: amendParam, newValue: n };
             }
         } else if (kind === "set-dues-rate") {
             const r = parseFloat(duesRatePct);
@@ -290,13 +290,13 @@
     });
 </script>
 
-{#if kind === "amend-constitution"}
+{#if kind === "amend-document-parameter"}
     {#if !constitution}
         <p class="hint">Loading constitution…</p>
     {:else}
         <select class="input select" bind:value={amendParam}>
             <option value="">— choose parameter —</option>
-            {#each Object.entries(constitution.meta.parameters) as [key, param]}
+            {#each Object.entries(constitution.parameters ?? {}) as [key, param]}
                 <option value={key}>{param.description} ({key})</option>
             {/each}
         </select>
@@ -333,7 +333,7 @@
         min="0" max="10" step="0.1"
     />
     {#if constitution}
-        <p class="hint">Current rate: <strong>{(constitution.meta.parameters["communityDuesRate"]?.value as number * 100 ?? 0).toFixed(2)}%</strong> / month &nbsp;·&nbsp; allowed range: 0–10%</p>
+        <p class="hint">Current rate: <strong>{((constitution.parameters?.["communityDuesRate"]?.value as number ?? 0) * 100).toFixed(2)}%</strong> / month &nbsp;·&nbsp; allowed range: 0–10%</p>
     {/if}
 {:else if kind === "set-retirement-age"}
     <input
@@ -344,7 +344,7 @@
         min="55" max="75" step="1"
     />
     {#if constitution}
-        <p class="hint">Current age: <strong>{constitution.meta.parameters["retirementAge"]?.value ?? 65} years</strong> &nbsp;·&nbsp; allowed range: 55–75</p>
+        <p class="hint">Current age: <strong>{constitution.parameters?.["retirementAge"]?.value ?? 65} years</strong> &nbsp;·&nbsp; allowed range: 55–75</p>
     {/if}
 {:else if kind === "set-retirement-payout"}
     <input
@@ -355,7 +355,7 @@
         min="0" max="100000" step="1"
     />
     {#if constitution}
-        <p class="hint">Current payout: <strong>{constitution.meta.parameters["retirementPayoutRate"]?.value ?? 500} kin/month</strong> &nbsp;·&nbsp; allowed range: 0–100,000</p>
+        <p class="hint">Current payout: <strong>{constitution.parameters?.["retirementPayoutRate"]?.value ?? 500} kin/month</strong> &nbsp;·&nbsp; allowed range: 0–100,000</p>
     {/if}
 {:else if kind === "add-person"}
     <input class="input" type="text" placeholder="First name *" bind:value={apFirstName} />

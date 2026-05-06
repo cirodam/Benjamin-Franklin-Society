@@ -3,14 +3,13 @@
  * Import this module once at startup (in index.ts) to register all effects.
  */
 
-import { effectRegistry, LeaderPool } from "@ecf/core";
-import { ConstitutionLoader } from "../ConstitutionLoader.js";
+import { effectRegistry, LeaderPool, currentTermWindow } from "@ecf/core";
+import { DocumentLoader } from "../DocumentLoader.js";
 import { Person } from "../../person/Person.js";
 import { PersonService } from "../../person/PersonService.js";
 import { DomainService } from "../../DomainService.js";
 import { NominationService } from "../../nomination/NominationService.js";
 import { CalendarService } from "../../calendar/CalendarService.js";
-import { DocumentLoader } from "../DocumentLoader.js";
 import { CommunityLogService } from "../../log/CommunityLogService.js";
 import { RoleType } from "../../common/RoleType.js";
 import { UnitType } from "../../common/domain/UnitType.js";
@@ -22,15 +21,17 @@ import { Location } from "../../location/Location.js";
 import { AssociationService } from "../../association/AssociationService.js";
 import { Association } from "../../association/Association.js";
 
-// ── amend-constitution ────────────────────────────────────────────────────────
-// Payload: { parameter: string, newValue: number | boolean }
+// ── amend-document-parameter ──────────────────────────────────────────────────
+// Payload: { docId: string, parameter: string, newValue: number | boolean }
 
-effectRegistry.register("amend-constitution", {
-    label:     "Amend constitution",
+effectRegistry.register("amend-document-parameter", {
+    label:     "Amend document parameter",
     authorityId:  "referendum",
     validate(raw) {
         if (typeof raw !== "object" || raw === null) return "Payload must be an object";
         const p = raw as Record<string, unknown>;
+        if (typeof p.docId !== "string" || !p.docId)
+            return "payload.docId must be a non-empty string";
         if (typeof p.parameter !== "string" || !p.parameter)
             return "payload.parameter must be a non-empty string";
         if (typeof p.newValue !== "number" && typeof p.newValue !== "boolean")
@@ -38,17 +39,17 @@ effectRegistry.register("amend-constitution", {
         return null;
     },
     handler({ motion, payload }) {
+        const docId     = payload.docId     as string;
         const parameter = payload.parameter as string;
         const newValue  = payload.newValue  as number | boolean;
 
-        const constitution = ConstitutionLoader.getInstance();
-        const oldValue     = constitution.getAll()[parameter]?.value;
-        constitution.amend(parameter, newValue, motion.id);
-        ConstitutionLoader.getInstance().save();
+        const docs     = new DocumentLoader();
+        const oldValue = docs.getParams(docId)[parameter]?.value;
+        const doc      = docs.amend(docId, parameter, newValue, motion.id);
 
         motion.outcomeNote =
-            `Constitution amended: "${parameter}" changed from ${oldValue} to ${newValue} ` +
-            `(v${constitution.version}).`;
+            `Document "${docId}" amended: "${parameter}" changed from ${oldValue} to ${newValue} ` +
+            `(v${doc.version}).`;
     },
 });
 
@@ -69,16 +70,14 @@ effectRegistry.register("set-dues-rate", {
     handler({ motion, payload }) {
         const pct          = payload.rate as number;
         const rateDecimal  = pct / 100;
-        const constitution = ConstitutionLoader.getInstance();
-        const oldPct       = Math.round(constitution.communityDuesRate * 10_000) / 100;
-        constitution.amend("communityDuesRate", rateDecimal, motion.id);
-        ConstitutionLoader.getInstance().save();
+        const docs         = new DocumentLoader();
+        const oldPct       = Math.round(docs.getParam<number>("constitution", "communityDuesRate") * 10_000) / 100;
+        docs.amend("constitution", "communityDuesRate", rateDecimal, motion.id);
         motion.outcomeNote = `Community dues rate changed from ${oldPct}% to ${pct}% per month.`;
         try {
             CommunityLogService.getInstance().write(
                 "constitution-amended",
-                `Dues rate set to ${pct}% per month (was ${oldPct}%).`,
-                { actorId: motion.proposerId },
+                `Dues rate set to ${pct}% per month (was ${oldPct}%).`,                { actorId: motion.proposerId },
             );
         } catch { /* non-fatal */ }
     },
@@ -102,16 +101,14 @@ effectRegistry.register("set-retirement-age", {
     },
     handler({ motion, payload }) {
         const age          = payload.age as number;
-        const constitution = ConstitutionLoader.getInstance();
-        const oldAge       = constitution.retirementAge;
-        constitution.amend("retirementAge", age, motion.id);
-        ConstitutionLoader.getInstance().save();
+        const docs         = new DocumentLoader();
+        const oldAge       = docs.getParam<number>("constitution", "retirementAge");
+        docs.amend("constitution", "retirementAge", age, motion.id);
         motion.outcomeNote = `Retirement age changed from ${oldAge} to ${age} years.`;
         try {
             CommunityLogService.getInstance().write(
                 "constitution-amended",
-                `Retirement age set to ${age} years (was ${oldAge}).`,
-                { actorId: motion.proposerId },
+                `Retirement age set to ${age} years (was ${oldAge}).`,                { actorId: motion.proposerId },
             );
         } catch { /* non-fatal */ }
     },
@@ -135,16 +132,14 @@ effectRegistry.register("set-retirement-payout", {
     },
     handler({ motion, payload }) {
         const amount       = payload.amount as number;
-        const constitution = ConstitutionLoader.getInstance();
-        const oldAmount    = constitution.retirementPayoutRate;
-        constitution.amend("retirementPayoutRate", amount, motion.id);
-        ConstitutionLoader.getInstance().save();
+        const docs         = new DocumentLoader();
+        const oldAmount    = docs.getParam<number>("constitution", "retirementPayoutRate");
+        docs.amend("constitution", "retirementPayoutRate", amount, motion.id);
         motion.outcomeNote = `Monthly retirement payout changed from ${oldAmount} to ${amount} kin/month.`;
         try {
             CommunityLogService.getInstance().write(
                 "constitution-amended",
-                `Monthly retirement payout set to ${amount} kin/month (was ${oldAmount}).`,
-                { actorId: motion.proposerId },
+                `Monthly retirement payout set to ${amount} kin/month (was ${oldAmount}).`,                { actorId: motion.proposerId },
             );
         } catch { /* non-fatal */ }
     },
@@ -329,7 +324,8 @@ effectRegistry.register("accept-nomination", {
             if (role) {
                 role.memberId      = n.nomineeId;
                 role.termStartDate = new Date();
-                role.termEndDate   = ConstitutionLoader.getInstance().currentTermWindow().end;
+                const cp2 = (k: string) => new DocumentLoader().getParam("constitution", k) as number;
+                role.termEndDate   = currentTermWindow({ startMonth: cp2("assemblyTermStartMonth"), startDay: cp2("assemblyTermStartDay"), termMonths: cp2("assemblyTermMonths") }).end;
                 domainSvc.saveRole(role);
             }
         }

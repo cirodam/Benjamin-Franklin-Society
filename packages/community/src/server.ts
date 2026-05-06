@@ -24,7 +24,8 @@ import { CommunityRoleLoader } from "./common/domain/CommunityRoleLoader.js";
 import { FunctionalUnitLoader } from "./common/domain/FunctionalUnitLoader.js";
 import { FunctionalDomainLoader } from "./common/domain/FunctionalDomainLoader.js";
 import { LeaderPoolLoader } from "./governance/LeaderPoolLoader.js";
-import { ConstitutionLoader } from "./governance/ConstitutionLoader.js";
+import { DocumentLoader } from "./governance/DocumentLoader.js";
+import { CommunityIdentityStore } from "./CommunityIdentityStore.js";
 import { MotionLoader } from "./governance/MotionLoader.js";
 import { MotionService } from "./governance/MotionService.js";
 import { AuthorityLoader } from "./governance/AuthorityLoader.js";
@@ -139,8 +140,16 @@ async function main(): Promise<void> {
         communitySigner.publicKeyHex,
     );
 
-    // ── Constitution ───────────────────────────────────────────────────────
-    ConstitutionLoader.getInstance().load();
+    // ── Constitution (seed on first boot if missing) ─────────────────
+    {
+        const { DocumentLoader }        = await import("./governance/DocumentLoader.js");
+        const { DEFAULT_CONSTITUTION }  = await import("./governance/ConstitutionDefaults.js");
+        const docs = new DocumentLoader();
+        if (!docs.load("constitution")) {
+            docs.save(DEFAULT_CONSTITUTION);
+            logger.info("Seeded default constitution document");
+        }
+    }
 
     // ── Charter (seed on existing installs if missing) ────────────────────
     {
@@ -324,7 +333,7 @@ async function main(): Promise<void> {
     // All replica nodes share communitySigner, so they all return the same publicKey.
     app.get("/api/identity", (_req, res) => {
         const identity = NodeService.getInstance().getIdentity();
-        const handle   = ConstitutionLoader.getInstance().communityHandle;
+        const handle   = CommunityIdentityStore.getInstance().handle;
         res.json({ id: identity.id, entityId: identity.entityId, publicKey: communitySigner.publicKeyHex, name: identity.name, handle });
     });
 
@@ -332,7 +341,7 @@ async function main(): Promise<void> {
     // Superset of /api/identity — adds memberCount so the federation can set the credit line.
     app.get("/api/federation/bootstrap", (_req, res) => {
         const identity    = NodeService.getInstance().getIdentity();
-        const handle      = ConstitutionLoader.getInstance().communityHandle;
+        const handle      = CommunityIdentityStore.getInstance().handle;
         const memberCount = PersonService.getInstance().getAll().length;
         res.json({
             nodeId:      identity.id,
@@ -345,9 +354,10 @@ async function main(): Promise<void> {
         });
     });
 
-    app.get("/api/constitution", (_req, res) => {
-        const con = ConstitutionLoader.getInstance();
-        res.json({ doc: con.getDoc(), meta: con.getMeta() });
+    app.get("/api/documents/constitution", (_req, res) => {
+        const doc = new DocumentLoader().load("constitution");
+        if (!doc) { res.status(404).json({ error: "Constitution not found" }); return; }
+        res.json(doc);
     });
 
     // Serve frontend

@@ -1,10 +1,10 @@
 <script lang="ts">
     import { getEconomics, getConstitution } from "../lib/api.js";
-    import type { EconomicsDto, ConstitutionDto } from "../lib/api.js";
+    import type { EconomicsDto, GoverningDocumentDto } from "../lib/api.js";
     import { currentPage } from "../lib/session.js";
 
     let econ   = $state<EconomicsDto | null>(null);
-    let con    = $state<ConstitutionDto | null>(null);
+    let con    = $state<GoverningDocumentDto | null>(null);
     let loading = $state(true);
     let error   = $state("");
 
@@ -31,7 +31,7 @@
     }
 
     function param(key: string, fallback: number): number {
-        const p = con?.meta.parameters[key];
+        const p = con?.parameters?.[key];
         return (p && typeof p.value === "number") ? p.value : fallback;
     }
 </script>

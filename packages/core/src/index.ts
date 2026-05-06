@@ -36,6 +36,7 @@ export * from "./governance/Committee.js";
 export * from "./governance/BaseApplication.js";
 export * from "./governance/DocumentFramework.js";
 export * from "./governance/EffectRegistry.js";
+export * from "./governance/termWindow.js";
 export * from "./governance/LeaderPool.js";
 export * from "./governance/Motion.js";
 export * from "./governance/VoteRule.js";

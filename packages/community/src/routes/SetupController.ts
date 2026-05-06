@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
 import { PersonService } from "../person/PersonService.js";
 import { Person } from "../person/Person.js";
-import { ConstitutionLoader } from "../governance/ConstitutionLoader.js";
 import { DocumentLoader } from "../governance/DocumentLoader.js";
+import { CommunityIdentityStore } from "../CommunityIdentityStore.js";
 import { makeDefaultCharter } from "../governance/CharterDefaults.js";
 
 // ── Sample population seeder ──────────────────────────────────────────────────
@@ -145,10 +145,8 @@ export async function setup(req: Request, res: Response): Promise<void> {
     await svc().grantApp(person.id, "market");
     await svc().grantApp(person.id, "mail");
 
-    // Set the community name and handle in the constitution and persist
-    ConstitutionLoader.getInstance().setCommunityName(communityName.trim());
-    ConstitutionLoader.getInstance().setCommunityHandle(communityHandle.trim());
-    ConstitutionLoader.getInstance().save();
+    // Set the community name and handle and persist
+    CommunityIdentityStore.getInstance().set(communityName.trim(), communityHandle.trim());
 
     // Seed the charter document if it doesn't already exist
     const docs = new DocumentLoader();
@@ -163,7 +161,7 @@ export async function setup(req: Request, res: Response): Promise<void> {
     }
 
     res.status(201).json({
-        communityName: ConstitutionLoader.getInstance().communityName,
+        communityName: CommunityIdentityStore.getInstance().name,
         seededCount,
         founder: {
             id:        person.id,

@@ -3,7 +3,7 @@ import { promisify } from "util";
 import { NodeService, NodeSigner } from "@ecf/core";
 import { Person, PersonCredential, LanguageProficiency } from "./Person.js";
 import { PersonLoader } from "./PersonLoader.js";
-import { ConstitutionLoader } from "../governance/ConstitutionLoader.js";
+import { DocumentLoader } from "../governance/DocumentLoader.js";
 import type { DomainService } from "../DomainService.js";
 
 import { HandleRegistry } from "../HandleRegistry.js";
@@ -337,7 +337,7 @@ export class PersonService {
     isSteward(person: Person): boolean {
         if (person.steward) return true;
         const threshold = (() => {
-            try { return ConstitutionLoader.getInstance().stewardshipThresholdYears; }
+            try { return new DocumentLoader().getParam<number>("constitution", "stewardshipThresholdYears"); }
             catch { return 3; }
         })();
         const yearsAsMember = (Date.now() - person.joinDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000);

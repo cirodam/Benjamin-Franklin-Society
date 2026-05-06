@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { CentralBank } from "../domains/central_bank/CentralBank.js";
 import { SocialInsuranceBank } from "../domains/social_insurance/SocialInsuranceBank.js";
 import { CommunityTreasury } from "../domains/community_treasury/CommunityTreasury.js";
-import { ConstitutionLoader } from "../governance/ConstitutionLoader.js";
+import { DocumentLoader } from "../governance/DocumentLoader.js";
 import { DomainService } from "../DomainService.js";
 import { PersonService } from "../person/PersonService.js";
 import { nodeBankClient as bankClient } from "../nodeBankClient.js";
@@ -20,7 +20,8 @@ import { CommunityLogService } from "../log/CommunityLogService.js";
 export async function getCommunityBudget(_req: Request, res: Response): Promise<void> {
     const cb       = CentralBank.getInstance();
     const treasury = CommunityTreasury.getInstance();
-    const constitution = ConstitutionLoader.getInstance();
+    const docs     = new DocumentLoader();
+    const cp = <T extends number | boolean>(k: string) => docs.getParam<T>("constitution", k);
 
     if (!cb.isReady() || !treasury.isReady()) {
         res.json({ ready: false });
@@ -38,7 +39,7 @@ export async function getCommunityBudget(_req: Request, res: Response): Promise<
         ]);
 
         const kinInCirculation    = cbAccount ? Math.max(0, -cbAccount.amount) : 0;
-        const duesRate            = constitution.communityDuesRate;
+        const duesRate            = cp<number>("communityDuesRate");
         const treasuryBalance     = treasuryAccount?.amount ?? 0;
         const siPoolBalance       = siAccount?.amount ?? 0;
         const duesableKin         = Math.max(0, kinInCirculation - siPoolBalance - treasuryBalance);
@@ -85,7 +86,8 @@ export async function simulateStep(_req: Request, res: Response): Promise<void> 
     const cb         = CentralBank.getInstance();
     const treasury   = CommunityTreasury.getInstance();
     const si         = SocialInsuranceBank.getInstance();
-    const constitution = ConstitutionLoader.getInstance();
+    const docs       = new DocumentLoader();
+    const cp = <T extends number | boolean>(k: string) => docs.getParam<T>("constitution", k);
 
     if (!cb.isReady() || !treasury.isReady()) {
         res.status(503).json({ error: "Monetary institutions not ready" });
@@ -99,18 +101,18 @@ export async function simulateStep(_req: Request, res: Response): Promise<void> 
 
         // 1. Demurrage
         const { count: demurrageCount } = await cb.applyDemurrage(
-            constitution.bankDemurrageRate,
+            cp<number>("bankDemurrageRate"),
             "simulated demurrage",
             excludeIds,
-            constitution.demurrageFloor,
+            cp<number>("demurrageFloor"),
         );
         logger.info(`[simulate-step] demurrage applied to ${demurrageCount} accounts`);
         try { CommunityLogService.getInstance().write("demurrage-run", `Demurrage applied to ${demurrageCount} accounts`); } catch { /* */ }
 
         // 2. Dues
         const { count: duesCount } = await treasury.collectDues(
-            constitution.communityDuesRate,
-            constitution.demurrageFloor,
+            cp<number>("communityDuesRate"),
+            cp<number>("demurrageFloor"),
             [cb.issuanceAccountId, si.isReady() ? si.poolAccountId : ""],
         );
         logger.info(`[simulate-step] dues collected from ${duesCount} accounts`);

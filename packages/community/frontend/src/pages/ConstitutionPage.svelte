@@ -2,18 +2,16 @@
     import {
         getConstitution, getAuthorities, listVoteRules,
     } from "../lib/api.js";
-    import type { ConstitutionDto, ConstitutionParam, DocumentSection, AuthorityDto, VoteRule } from "../lib/api.js";
+    import type { GoverningDocumentDto, DocumentParameter, DocumentSection, AuthorityDto, VoteRule } from "../lib/api.js";
     import { currentPage, session, selectedSection } from "../lib/session.js";
     import { formatDate } from "../lib/utils.js";
     import AuthorityBadge from "../components/AuthorityBadge.svelte";
     import VoteRuleBadge from "../components/VoteRuleBadge.svelte";
     import VoteRuleDetails from "../components/VoteRuleDetails.svelte";
 
-    let con: ConstitutionDto | null = $state(null);
+    let doc: GoverningDocumentDto | null = $state(null);
     let authorities: AuthorityDto[] = $state([]);
     let voteRules: VoteRule[] = $state([]);
-    const doc  = $derived(con?.doc  ?? null);
-    const meta = $derived(con?.meta ?? null);
     let loading = $state(true);
     let error = $state("");
 
@@ -21,19 +19,19 @@
 
     $effect(() => {
         Promise.all([getConstitution(), getAuthorities(), listVoteRules()])
-            .then(([d, a, r]) => { con = d; authorities = a; voteRules = r; })
+            .then(([d, a, r]) => { doc = d; authorities = a; voteRules = r; })
             .catch(e => { error = e instanceof Error ? e.message : "Failed to load constitution"; })
             .finally(() => { loading = false; });
     });
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    function isRateParam(p: ConstitutionParam): boolean {
+    function isRateParam(p: DocumentParameter): boolean {
         if (typeof p.value !== "number") return false;
         return p.value > 0 && p.value < 1 && (p.constraints?.max ?? 2) <= 1;
     }
 
-    function fmtParam(key: string, params: Record<string, ConstitutionParam>): string {
+    function fmtParam(key: string, params: Record<string, DocumentParameter>): string {
         const p = params[key];
         if (!p) return `{${key}}`;
         const v = p.value;
@@ -64,7 +62,7 @@
         if (!doc) return;
         selectedSection.set({
             docId:     "constitution",
-            docTitle:  `Constitution of ${meta!.communityName}`,
+            docTitle:  `Constitution`,
             backPage:  "constitution",
             sectionId: section.id,
         });
@@ -81,31 +79,31 @@
         <div class="state-msg">Loading…</div>
     {:else if error}
         <div class="state-msg error">{error}</div>
-    {:else if con}
+    {:else if doc}
 
         <!-- Document header -->
         <div class="doc-header">
             <div class="doc-meta-row">
-                <span class="doc-meta-label">Version {meta!.version}</span>
+                <span class="doc-meta-label">Version {doc.version}</span>
                 <span class="doc-meta-sep">·</span>
-                <span class="doc-meta-label">Adopted {formatDate(doc!.adoptedAt)}</span>
-                {#if meta!.amendments.length > 0}
+                <span class="doc-meta-label">Adopted {formatDate(doc.adoptedAt)}</span>
+                {#if (doc.amendments?.length ?? 0) > 0}
                     <span class="doc-meta-sep">·</span>
-                    <span class="doc-meta-label">{meta!.amendments.length} amendment{meta!.amendments.length !== 1 ? "s" : ""}</span>
+                    <span class="doc-meta-label">{doc.amendments!.length} amendment{doc.amendments!.length !== 1 ? "s" : ""}</span>
                 {/if}
             </div>
-            <h1 class="doc-title">Constitution of {meta!.communityName}</h1>
+            <h1 class="doc-title">{doc.title}</h1>
             <div class="doc-governance">
                 <div class="doc-governance-top">
                     <span class="meta-label">Governed &amp; amended by</span>
-                    <AuthorityBadge authorityId={doc!.authorityId} {authorities} />
+                    <AuthorityBadge authorityId={doc.authorityId} {authorities} />
                 </div>
-                <VoteRuleDetails ruleId={doc!.voteRuleId} rules={voteRules} />
+                <VoteRuleDetails ruleId={doc.voteRuleId} rules={voteRules} />
             </div>
         </div>
 
         <!-- Articles -->
-        {#each (doc!.articles ?? []) as article}
+        {#each (doc.articles ?? []) as article}
             <section class="article">
                 <h2 class="article-heading">
                     <span class="article-number">Article {article.number}</span>
@@ -132,7 +130,7 @@
                             </div>
                             <p class="section-btn-snippet">
                                 {#each parseBody(section.body) as seg}
-                                    {#if seg.type === "text"}{seg.content}{:else}<span class="snippet-param">{fmtParam(seg.key, meta!.parameters)}</span>{/if}
+                                    {#if seg.type === "text"}{seg.content}{:else}<span class="snippet-param">{fmtParam(seg.key, doc.parameters ?? {})}</span>{/if}
                                 {/each}
                             </p>
                         </button>
@@ -142,14 +140,14 @@
         {/each}
 
         <!-- Authority map -->
-        {#if meta!.authorityMap.length > 0}
+        {#if (doc.authorityMap?.length ?? 0) > 0}
             <section class="article authority-section">
                 <h2 class="article-heading">
                     <span class="article-number">Appendix</span>
                     Governance Actions
                 </h2>
                 <div class="action-grid">
-                    {#each meta!.authorityMap as action}
+                    {#each doc.authorityMap! as action}
                         <div class="action-row">
                             <div class="action-top">
                                 <code class="action-name">{action.action}</code>
@@ -166,14 +164,14 @@
         {/if}
 
         <!-- Amendment history -->
-        {#if meta!.amendments.length > 0}
+        {#if (doc.amendments?.length ?? 0) > 0}
             <section class="article">
                 <h2 class="article-heading">
                     <span class="article-number">History</span>
                     Amendments
                 </h2>
                 <div class="amendment-list">
-                    {#each meta!.amendments as a}
+                    {#each doc.amendments! as a}
                         <div class="amendment-row">
                             <span class="amend-version">v{a.version}</span>
                             <span class="amend-key">{a.parameter}</span>

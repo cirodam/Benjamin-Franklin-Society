@@ -1,12 +1,11 @@
 import { Router, Request, Response } from "express";
 import { requireAuth, requireSteward } from "./middleware.js";
 import * as motions   from "./MotionController.js";
-import { ConstitutionLoader } from "../governance/ConstitutionLoader.js";
 import { DocumentLoader } from "../governance/DocumentLoader.js";
 import { AuthorityLoader } from "../governance/AuthorityLoader.js";
 import { PersonService } from "../person/PersonService.js";
 import { CommunityLogService } from "../log/CommunityLogService.js";
-import { Assembly, AssemblyTerm, type AssemblyTermData } from "@ecf/core";
+import { Assembly, AssemblyTerm, type AssemblyTermData, currentTermWindow, nextTermStartDate } from "@ecf/core";
 import { CommunityDb } from "../CommunityDb.js";
 
 const router = Router();
@@ -27,50 +26,53 @@ router.post(  "/motions/:id/deliberate",     requireAuth,    motions.submitForDe
 router.post(  "/motions/:id/outcome",        requireSteward, motions.recordOutcome);
 router.delete("/motions/:id",                requireAuth,    motions.withdrawMotion);
 
-// PATCH /api/constitution/parameters/:key
+// PATCH /api/documents/constitution/parameters/:key
 // Body: { value: number | boolean }
 // Steward-only direct override — for experimental use.
-router.patch("/constitution/parameters/:key", requireSteward, (req: Request, res: Response) => {
+router.patch("/documents/constitution/parameters/:key", requireSteward, (req: Request, res: Response) => {
     const key = req.params.key as string;
     const { value } = (req.body ?? {}) as { value?: unknown };
     if (typeof value !== "number" && typeof value !== "boolean") {
         res.status(400).json({ error: "value must be a number or boolean" }); return;
     }
     try {
-        const con = ConstitutionLoader.getInstance();
-        con.amend(key, value, "steward-override");
-        con.save();
-        res.json({ key, value: con.get(key) });
+        const docs = new DocumentLoader();
+        docs.amend("constitution", key, value, "steward-override");
+        res.json({ key, value: docs.getParam("constitution", key) });
     } catch (err) {
         res.status(400).json({ error: (err as Error).message });
     }
 });
 
-// PATCH /api/constitution/sections/:sectionId
+// PATCH /api/documents/constitution/sections/:sectionId
 // Body: { body: string }
 // Steward-only direct override of a section's prose text.
-router.patch("/constitution/sections/:sectionId", requireSteward, (req: Request, res: Response) => {
+router.patch("/documents/constitution/sections/:sectionId", requireSteward, (req: Request, res: Response) => {
     const sectionId = req.params.sectionId as string;
     const { body } = (req.body ?? {}) as { body?: unknown };
     if (typeof body !== "string" || !body.trim()) {
         res.status(400).json({ error: "body is required and must be a non-empty string" }); return;
     }
     try {
-        const con = ConstitutionLoader.getInstance();
-        con.updateSection(sectionId, body.trim());
-        con.save();
-        res.json({ doc: con.getDoc(), meta: con.getMeta() });
+        const docs = new DocumentLoader();
+        res.json(docs.updateSection("constitution", sectionId, body.trim()));
     } catch (err) {
         res.status(400).json({ error: (err as Error).message });
     }
 });
 
-// GET /api/charter
-// Returns the charter document (read-only; always id="charter").
+// GET /api/charter — keep old path as alias
 router.get("/charter", (_req: Request, res: Response) => {
     const charter = bylaws.load("charter");
     if (!charter) { res.status(404).json({ error: "Charter not found" }); return; }
     res.json(charter);
+});
+
+// GET /api/documents/:id
+router.get("/documents/:id", (req: Request, res: Response) => {
+    const doc = bylaws.load(req.params.id as string);
+    if (!doc) { res.status(404).json({ error: "Document not found" }); return; }
+    res.json(doc);
 });
 
 // ── Bylaws ────────────────────────────────────────────────────────────────────
@@ -85,7 +87,7 @@ function rejectCharter(req: Request, res: Response, next: () => void): void {
 }
 
 router.get("/bylaws", (_req: Request, res: Response) => {
-    res.json(bylaws.loadAll());
+    res.json(bylaws.loadAll({ excludeIds: ["constitution", "charter"] }));
 });
 
 router.get("/bylaws/:id", (req: Request, res: Response) => {
@@ -153,7 +155,7 @@ function loadAssembly(): Assembly {
 }
 
 function computeSeats(): number {
-    return ConstitutionLoader.getInstance().get<number>("assemblySeatCount");
+    return new DocumentLoader().getParam<number>("constitution", "assemblySeatCount");
 }
 
 function personToSlimDto(p: { id: string; firstName: string; lastName: string; handle: string }) {
@@ -165,20 +167,22 @@ router.get("/assembly", (_req: Request, res: Response) => {
     const persons = PersonService.getInstance().getAll().filter(p => !p.disabled);
     const seats   = computeSeats();
     const asm     = loadAssembly();
-    const constitution = ConstitutionLoader.getInstance();
+    const docs    = new DocumentLoader();
+    const cp = <T extends number | boolean>(k: string) => docs.getParam<T>("constitution", k);
 
     const seatedPersons = asm.memberIds
         .map(id => PersonService.getInstance().get(id))
         .filter(Boolean)
         .map(p => personToSlimDto(p!));
 
-    const termWindow = constitution.currentTermWindow();
+    const termParams = { startMonth: cp<number>("assemblyTermStartMonth"), startDay: cp<number>("assemblyTermStartDay"), termMonths: cp<number>("assemblyTermMonths") };
+    const termWindow = currentTermWindow(termParams);
 
     res.json({
         seats,
-        termMonths:             constitution.assemblyTermMonths,
-        termStartMonth:         constitution.assemblyTermStartMonth,
-        termStartDay:           constitution.assemblyTermStartDay,
+        termMonths:             cp<number>("assemblyTermMonths"),
+        termStartMonth:         cp<number>("assemblyTermStartMonth"),
+        termStartDay:           cp<number>("assemblyTermStartDay"),
         canonicalTermStartDate: termWindow.start.toISOString().slice(0, 10),
         canonicalTermEndDate:   termWindow.end.toISOString().slice(0, 10),
         termStartDate:          asm.termStartedAt,
@@ -191,14 +195,16 @@ router.get("/assembly", (_req: Request, res: Response) => {
 // Randomly draws a new assembly term from eligible (non-disabled, adult) members.
 router.post("/assembly/draw", requireSteward, (req: Request, res: Response) => {
     const { termStartDate } = (req.body ?? {}) as { termStartDate?: string };
-    const constitution = ConstitutionLoader.getInstance();
+    const docs = new DocumentLoader();
+    const cp = <T extends number | boolean>(k: string) => docs.getParam<T>("constitution", k);
+    const termParams = { startMonth: cp<number>("assemblyTermStartMonth"), startDay: cp<number>("assemblyTermStartDay"), termMonths: cp<number>("assemblyTermMonths") };
     // Default to the constitution's canonical term start date for the current cycle
-    const startDate = termStartDate ?? constitution.currentTermWindow().start.toISOString().slice(0, 10);
+    const startDate = termStartDate ?? currentTermWindow(termParams).start.toISOString().slice(0, 10);
     if (isNaN(new Date(startDate).getTime())) {
         res.status(400).json({ error: "termStartDate must be a valid date" }); return;
     }
 
-    const workingMin   = constitution.workingAgeMin;
+    const workingMin   = cp<number>("workingAgeMin");
     const now          = new Date();
     const eligible     = PersonService.getInstance().getAll()
         .filter(p => !p.disabled && p.getAgeYears(now) >= workingMin);
@@ -216,7 +222,7 @@ router.post("/assembly/draw", requireSteward, (req: Request, res: Response) => {
     const asm = loadAssembly();
     asm.memberIds     = drawn.map(p => p.id);
     asm.termStartedAt = startDate;
-    asm.termEndsAt    = constitution.currentTermWindow().end.toISOString().slice(0, 10);
+    asm.termEndsAt    = currentTermWindow(termParams).end.toISOString().slice(0, 10);
     AuthorityLoader.getInstance().save(asm);
 
     // Record a historical term for audit trail
@@ -245,11 +251,11 @@ router.post("/assembly/draw", requireSteward, (req: Request, res: Response) => {
 
     res.json({
         seats,
-        termMonths:             constitution.assemblyTermMonths,
-        termStartMonth:         constitution.assemblyTermStartMonth,
-        termStartDay:           constitution.assemblyTermStartDay,
-        canonicalTermStartDate: constitution.currentTermWindow().start.toISOString().slice(0, 10),
-        canonicalTermEndDate:   constitution.currentTermWindow().end.toISOString().slice(0, 10),
+        termMonths:             cp<number>("assemblyTermMonths"),
+        termStartMonth:         cp<number>("assemblyTermStartMonth"),
+        termStartDay:           cp<number>("assemblyTermStartDay"),
+        canonicalTermStartDate: currentTermWindow(termParams).start.toISOString().slice(0, 10),
+        canonicalTermEndDate:   currentTermWindow(termParams).end.toISOString().slice(0, 10),
         termStartDate:          startDate,
         population:             eligible.length,
         seated:                 drawn.map(p => personToSlimDto(p)),

@@ -1,12 +1,11 @@
 import { Authority } from "./Authority.js";
 
 /**
- * A permanent sortition-drawn governing body, term-rotating, potentially hundreds
- * of members.
+ * A sortition-drawn governing body whose seated membership rotates each term.
  *
- * `memberIds` holds whoever is currently seated. When a new term is drawn the
- * service updates `memberIds`, `termStartedAt`, and `termEndsAt` and saves the
- * authority record. Historical terms are tracked via AssemblyTerm records.
+ * The authority record itself is a permanent singleton. When a new term is drawn,
+ * `memberIds`, `termStartedAt`, and `termEndsAt` are updated in place. Historical
+ * terms are tracked separately via AssemblyTerm records.
  */
 export class Assembly extends Authority {
     readonly kind = "assembly" as const;

@@ -7,11 +7,9 @@
         updateBylawSection,
     } from "../lib/api.js";
     import type {
-        ConstitutionDto,
         ConstitutionParam,
         DocumentSection,
         GoverningDocumentDto,
-        BylawDto,
         VoteRule,
     } from "../lib/api.js";
     import { currentPage, session, selectedSection } from "../lib/session.js";
@@ -22,8 +20,8 @@
     const isSteward   = $derived($session?.isSteward ?? false);
 
     // Loaded data
-    let constitution: ConstitutionDto | null = $state(null);
-    let bylawDoc:     BylawDto | null        = $state(null);
+    let constitutionDoc: GoverningDocumentDto | null = $state(null);
+    let bylawDoc:     GoverningDocumentDto | null = $state(null);
     let voteRules:    VoteRule[]             = $state([]);
     let loading = $state(true);
     let error   = $state("");
@@ -39,7 +37,7 @@
         if (!c) return;
         loading = true; error = ""; constitution = null; bylawDoc = null;
         const docP = c.docId === "constitution"
-            ? getConstitution().then(d => { constitution = d; })
+            ? getConstitution().then(d => { constitutionDoc = d; })
             : getBylaw(c.docId).then(d  => { bylawDoc = d;  });
         Promise.all([docP, listVoteRules().then(r => { voteRules = r; })])
             .catch(e => { error = e instanceof Error ? e.message : "Failed to load"; })
@@ -50,7 +48,7 @@
     const section = $derived.by<DocumentSection | null>(() => {
         const id = ctx?.sectionId;
         if (!id) return null;
-        const doc = constitution?.doc ?? bylawDoc ?? null;
+        const doc = constitutionDoc ?? bylawDoc ?? null;
         if (!doc) return null;
         for (const a of doc.articles) {
             const s = a.sections.find(s => s.id === id);
@@ -59,11 +57,11 @@
         return null;
     });
 
-    const doc = $derived<GoverningDocumentDto | BylawDto | null>(
-        constitution?.doc ?? bylawDoc ?? null
+    const doc = $derived<GoverningDocumentDto | null>(
+        constitutionDoc ?? bylawDoc ?? null
     );
 
-    const params = $derived(constitution?.meta.parameters ?? {});
+    const params = $derived(constitutionDoc?.parameters ?? {});
 
     const sectionHasOwnRule = $derived(
         !!section?.voteRuleId && section.voteRuleId !== doc?.voteRuleId

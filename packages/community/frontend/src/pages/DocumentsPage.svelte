@@ -1,14 +1,14 @@
 <script lang="ts">
     import { getConstitution, listBylaws, deleteBylaw, getCharter, getAuthorities } from "../lib/api.js";
-    import type { ConstitutionDto, BylawDto, AuthorityDto } from "../lib/api.js";
+    import type { GoverningDocumentDto, AuthorityDto } from "../lib/api.js";
     import { currentPage, session, selectedBylawId } from "../lib/session.js";
     import AuthorityBadge from "../components/AuthorityBadge.svelte";
 
     const isSteward = $derived($session?.isSteward ?? false);
 
-    let constitution: ConstitutionDto | null = $state(null);
-    let charter: BylawDto | null = $state(null);
-    let bylaws: BylawDto[] = $state([]);
+    let constitution: GoverningDocumentDto | null = $state(null);
+    let charter: GoverningDocumentDto | null = $state(null);
+    let bylaws: GoverningDocumentDto[] = $state([]);
     let authorities: AuthorityDto[] = $state([]);
     let loading = $state(true);
     let error   = $state("");
@@ -28,7 +28,7 @@
 
     $effect(() => { load(); });
 
-    async function handleDelete(bylaw: BylawDto, e: MouseEvent) {
+    async function handleDelete(bylaw: GoverningDocumentDto, e: MouseEvent) {
         e.stopPropagation();
         if (!confirm(`Delete "${bylaw.title}"? This cannot be undone.`)) return;
         try {
@@ -45,7 +45,7 @@
         currentPage.go("constitution");
     }
 
-    function openBylaw(bylaw: BylawDto) {
+    function openBylaw(bylaw: GoverningDocumentDto) {
         selectedBylawId.set(bylaw.id);
         currentPage.go("bylaw");
     }
@@ -54,7 +54,7 @@
         return new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
     }
 
-    function expiryStatus(bylaw: BylawDto): "expired" | "soon" | "none" {
+    function expiryStatus(bylaw: GoverningDocumentDto): "expired" | "soon" | "none" {
         if (!bylaw.expiresAt) return "none";
         const now      = Date.now();
         const expiry   = new Date(bylaw.expiresAt).getTime();
@@ -63,7 +63,7 @@
         return "none";
     }
 
-    function expiryLabel(bylaw: BylawDto): string {
+    function expiryLabel(bylaw: GoverningDocumentDto): string {
         if (!bylaw.expiresAt) return "";
         return `Expires ${formatDate(bylaw.expiresAt)}`;
     }
@@ -100,17 +100,17 @@
             <div class="section-label">Constitution</div>
             <button class="doc-card" onclick={openConstitution}>
                 <div class="doc-card-body">
-                    <div class="doc-title">Constitution of {constitution.meta.communityName}</div>
+                    <div class="doc-title">{constitution.title}</div>
                     <div class="doc-meta">
-                        Version {constitution.meta.version} · Adopted {formatDate(constitution.doc.adoptedAt)}
-                        {#if constitution.meta.amendments.length > 0}
-                            · {constitution.meta.amendments.length} amendment{constitution.meta.amendments.length !== 1 ? "s" : ""}
+                        Version {constitution.version} · Adopted {formatDate(constitution.adoptedAt)}
+                        {#if (constitution.amendments?.length ?? 0) > 0}
+                            · {constitution.amendments!.length} amendment{constitution.amendments!.length !== 1 ? "s" : ""}
                         {/if}
                     </div>
-                    {#if constitution.doc.articles.length > 0}
-                        <div class="doc-toc">{constitution.doc.articles.length} article{constitution.doc.articles.length !== 1 ? "s" : ""}</div>
+                    {#if constitution.articles.length > 0}
+                        <div class="doc-toc">{constitution.articles.length} article{constitution.articles.length !== 1 ? "s" : ""}</div>
                     {/if}
-                    <div class="doc-authority"><AuthorityBadge authorityId={constitution.doc.authorityId} {authorities} /></div>
+                    <div class="doc-authority"><AuthorityBadge authorityId={constitution.authorityId} {authorities} /></div>
                 </div>
                 <span class="doc-arrow">›</span>
             </button>
