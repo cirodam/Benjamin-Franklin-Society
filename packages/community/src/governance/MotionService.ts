@@ -77,7 +77,7 @@ export class MotionService {
     submitForDeliberation(
         motionId:     string,
         callerId:     string,
-        voteRuleId:   string = "referendum-general",
+        voteRuleId:   string = "absolute-majority",
         minApprovals?: number,
     ): Motion {
         const m = this.require(motionId);
@@ -275,7 +275,7 @@ export class MotionService {
 
     private getNeededApprovals(m: Motion): number {
         const eligible = this.eligibleCount(m);
-        const rule = getVoteRule(m.voteRuleId ?? "referendum-general");
+        const rule = getVoteRule(m.voteRuleId ?? "absolute-majority");
         if (rule.legitimacy === "petition") return m.minApprovals ?? 1;
         return Math.ceil(eligible * (rule.thresholdFraction ?? 0.51));
     }

@@ -391,7 +391,7 @@ export class DomainService {
             name:              pool.name,
             type:              "pool",
             poolId:            pool.id,
-            defaultVoteRuleId: "assembly-general",
+            defaultVoteRuleId: "simple-majority",
         });
     }
 
@@ -403,7 +403,7 @@ export class DomainService {
             name:              pool.name,
             type:              "pool",
             poolId:            pool.id,
-            defaultVoteRuleId: "assembly-general",
+            defaultVoteRuleId: "simple-majority",
         });
     }
 

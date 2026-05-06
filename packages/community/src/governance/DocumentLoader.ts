@@ -26,7 +26,7 @@ export class DocumentLoader {
         return rows.map(r => JSON.parse(r.data) as GoverningDocument);
     }
 
-    create(title: string, preamble?: string, authorityId: string = "assembly", domainId: string | null = null, sunsetYears?: number, voteRuleId: string = "assembly-general"): GoverningDocument {
+    create(title: string, preamble?: string, authorityId: string = "assembly", domainId: string | null = null, sunsetYears?: number, voteRuleId: string = "simple-majority"): GoverningDocument {
         const expiresAt = (sunsetYears && sunsetYears > 0)
             ? new Date(Date.now() + sunsetYears * 365.25 * 24 * 3600 * 1000).toISOString()
             : null;

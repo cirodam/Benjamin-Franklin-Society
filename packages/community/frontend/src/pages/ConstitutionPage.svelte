@@ -7,6 +7,7 @@
     import { formatDate } from "../lib/utils.js";
     import AuthorityBadge from "../components/AuthorityBadge.svelte";
     import VoteRuleBadge from "../components/VoteRuleBadge.svelte";
+    import VoteRuleDetails from "../components/VoteRuleDetails.svelte";
 
     let con: ConstitutionDto | null = $state(null);
     let authorities: AuthorityDto[] = $state([]);
@@ -94,11 +95,12 @@
                 {/if}
             </div>
             <h1 class="doc-title">Constitution of {meta!.communityName}</h1>
-            <div class="authority-badge">
-                <span class="authority-label">Authority</span>
-                <AuthorityBadge authorityId={doc!.authorityId} {authorities} />
-                <span class="authority-label">Amendment rule</span>
-                <VoteRuleBadge ruleId={doc!.voteRuleId} rules={voteRules} />
+            <div class="doc-governance">
+                <div class="doc-governance-top">
+                    <span class="meta-label">Governed &amp; amended by</span>
+                    <AuthorityBadge authorityId={doc!.authorityId} {authorities} />
+                </div>
+                <VoteRuleDetails ruleId={doc!.voteRuleId} rules={voteRules} />
             </div>
         </div>
 
@@ -121,7 +123,6 @@
                                 {#if section.title}
                                     <span class="section-btn-title">{section.title}</span>
                                 {/if}
-                                <VoteRuleBadge ruleId={section.voteRuleId} fallbackId={doc!.voteRuleId} rules={voteRules} />
                                 {#if section.sunsetAt}
                                     {@const expired = new Date(section.sunsetAt).getTime() <= Date.now()}
                                     <span class="section-badge {expired ? 'badge-expired' : 'badge-sunset'}">
@@ -236,6 +237,31 @@
         color: #0f172a;
         line-height: 1.3;
         margin: 0;
+    }
+
+    .doc-governance {
+        margin-top:    0.85rem;
+        padding:       0.65rem 0.85rem;
+        border-radius: 8px;
+        border:        1px solid #e2e8f0;
+        background:    #f8fafc;
+        display:       flex;
+        flex-direction: column;
+        gap:           0.45rem;
+    }
+
+    .doc-governance-top {
+        display:     flex;
+        align-items: center;
+        gap:         0.4rem;
+    }
+
+    .meta-label {
+        font-size:      0.68rem;
+        font-weight:    700;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        color:          #94a3b8;
     }
 
     /* ── Articles ─────────────────────────────────────────────────────── */

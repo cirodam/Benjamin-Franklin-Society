@@ -239,7 +239,7 @@ function defaultDoc(): GoverningDocument {
         adoptedAt:   new Date().toISOString(),
         version:     1,
         authorityId: "community",
-        voteRuleId:  "referendum-constitutional",
+        voteRuleId:  "absolute-supermajority",
     };
 }
 

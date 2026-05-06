@@ -3,25 +3,15 @@
         getMotion, castMotionVote, addMotionComment, recordMotionDissent,
         submitMotionForDeliberation, openMotionVoting,
         markMotionDiscussed, recordMotionOutcome, withdrawMotion,
+        listVoteRules,
     } from "../lib/api.js";
-    import type { MotionDto, MotionOutcome, CommentKind, AuthorityDto } from "../lib/api.js";
+    import type { MotionDto, MotionOutcome, CommentKind, VoteRule } from "../lib/api.js";
     import { session, currentPage, selectedMotionId } from "../lib/session.js";
     import AuthorityBadge from "../components/AuthorityBadge.svelte";
-
-    const RULE_LABELS: Record<string, string> = {
-        "referendum-constitutional": "Constitutional Referendum — requires 2/3 of all members",
-        "referendum-general":        "General Referendum — requires majority of all members",
-        "assembly-general":          "Assembly Motion — simple majority of seated assembly",
-        "assembly-supermajority":    "Assembly Supermajority — 2/3 of seated assembly",
-        "pool-general":              "Pool Vote — simple majority of pool members",
-        "petition":                  "Petition",
-    };
-    function ruleLabel(m: MotionDto): string {
-        if (m.voteRuleId) return RULE_LABELS[m.voteRuleId] ?? m.voteRuleId;
-        return "";
-    }
+    import VoteRuleDetails from "../components/VoteRuleDetails.svelte";
 
     let motion:  MotionDto | null = $state(null);
+    let voteRules: VoteRule[]     = $state([]);
     let loading  = $state(true);
     let error    = $state("");
     let actionError = $state("");
@@ -67,7 +57,7 @@
         if (!id) return;
         loading = true; error = "";
         try {
-            motion = await getMotion(id);
+            [motion, voteRules] = await Promise.all([getMotion(id), listVoteRules()]);
         } catch (e) {
             error = e instanceof Error ? e.message : "Failed to load motion";
         } finally { loading = false; }
@@ -187,7 +177,7 @@
         {#if motion.voteRuleId === "petition" && motion.minApprovals}
             <p class="threshold-note">Petition — needs <strong>{motion.minApprovals}</strong> approval{motion.minApprovals !== 1 ? "s" : ""} to pass</p>
         {:else if motion.voteRuleId}
-            <p class="threshold-note">{ruleLabel(motion)}</p>
+            <VoteRuleDetails ruleId={motion.voteRuleId} rules={voteRules} />
         {/if}
 
         <!-- Description -->

@@ -135,7 +135,7 @@ export function makeDefaultCharter(): GoverningDocument {
         adoptedAt:   new Date().toISOString(),
         version:     1,
         authorityId: "network",
-        voteRuleId:  "referendum-constitutional",
+        voteRuleId:  "absolute-supermajority",
         domainId:    null,
         expiresAt:   null,
     };

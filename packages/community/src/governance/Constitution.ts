@@ -250,24 +250,24 @@ export const DEFAULT_CONSTITUTION_META: Omit<ConstitutionMetadata, "documentId">
     amendments: [],
     authorityMap: [
         // Membership
-        { action: "admit-member",             body: "assembly",   voteRuleId: "petition",                  description: "Admitting a new member — requires a petition reaching the signature threshold" },
-        { action: "suspend-member",           body: "assembly",   voteRuleId: "assembly-general",          description: "Suspending a member pending review — simple majority of the assembly" },
-        { action: "exclude-member",           body: "referendum", voteRuleId: "referendum-constitutional", description: "Permanently excluding a member — requires 2/3 of all members" },
+        { action: "admit-member",             body: "assembly",   voteRuleId: "petition",                description: "Admitting a new member — requires a petition reaching the signature threshold" },
+        { action: "suspend-member",           body: "assembly",   voteRuleId: "simple-majority",         description: "Suspending a member pending review — simple majority of the assembly" },
+        { action: "exclude-member",           body: "referendum", voteRuleId: "absolute-supermajority",  description: "Permanently excluding a member — requires 2/3 of all members" },
         // Monetary policy
-        { action: "change-dues-rate",         body: "referendum", voteRuleId: "referendum-general",        description: "Changing the community dues rate — majority of all members" },
-        { action: "change-demurrage-rate",    body: "referendum", voteRuleId: "referendum-general",        description: "Changing the bank demurrage rate — majority of all members" },
-        { action: "change-demurrage-floor",   body: "referendum", voteRuleId: "referendum-general",        description: "Changing the demurrage-free balance floor — majority of all members" },
+        { action: "change-dues-rate",         body: "referendum", voteRuleId: "absolute-majority",       description: "Changing the community dues rate — majority of all members" },
+        { action: "change-demurrage-rate",    body: "referendum", voteRuleId: "absolute-majority",       description: "Changing the bank demurrage rate — majority of all members" },
+        { action: "change-demurrage-floor",   body: "referendum", voteRuleId: "absolute-majority",       description: "Changing the demurrage-free balance floor — majority of all members" },
         // Constitution
-        { action: "amend-constitution",       body: "referendum", voteRuleId: "referendum-constitutional", description: "Amending the constitution — requires 2/3 of all members" },
+        { action: "amend-constitution",       body: "referendum", voteRuleId: "absolute-supermajority",  description: "Amending the constitution — requires 2/3 of all members" },
         // Federation
-        { action: "join-federation",          body: "referendum", voteRuleId: "referendum-constitutional", description: "Joining a federation — requires 2/3 of all members" },
-        { action: "leave-federation",         body: "referendum", voteRuleId: "referendum-constitutional", description: "Leaving a federation — requires 2/3 of all members" },
+        { action: "join-federation",          body: "referendum", voteRuleId: "absolute-supermajority",  description: "Joining a federation — requires 2/3 of all members" },
+        { action: "leave-federation",         body: "referendum", voteRuleId: "absolute-supermajority",  description: "Leaving a federation — requires 2/3 of all members" },
         // Assembly / council operations
-        { action: "split-council",            body: "assembly",   voteRuleId: "assembly-supermajority",    description: "Splitting a multi-domain council into two — 2/3 of the assembly" },
-        { action: "allocate-domain-budget",   body: "assembly",   voteRuleId: "assembly-general",          description: "Setting budget envelopes for domains — simple majority of the assembly" },
-        { action: "declare-domain-emergency", body: "council",    voteRuleId: "pool-general",              description: "Declaring a domain emergency — council vote; assembly ratifies within 72h" },
-        { action: "change-market-schedule",   body: "council",    voteRuleId: "pool-general",              description: "Changing market day schedule — council vote" },
-        { action: "enact-domain-statute",     body: "council",    voteRuleId: "pool-general",              description: "Enacting an operating rule within a domain — council vote" },
+        { action: "split-council",            body: "assembly",   voteRuleId: "supermajority",           description: "Splitting a multi-domain council into two — 2/3 of the assembly" },
+        { action: "allocate-domain-budget",   body: "assembly",   voteRuleId: "simple-majority",         description: "Setting budget envelopes for domains — simple majority of the assembly" },
+        { action: "declare-domain-emergency", body: "council",    voteRuleId: "simple-majority",         description: "Declaring a domain emergency — council vote; assembly ratifies within 72h" },
+        { action: "change-market-schedule",   body: "council",    voteRuleId: "simple-majority",         description: "Changing market day schedule — council vote" },
+        { action: "enact-domain-statute",     body: "council",    voteRuleId: "simple-majority",         description: "Enacting an operating rule within a domain — council vote" },
     ],
 };
 

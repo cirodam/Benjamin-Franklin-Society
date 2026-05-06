@@ -27,14 +27,14 @@ export const BUILTIN_AUTHORITIES: Authority[] = [
         name:              "Assembly",
         description:       "The seated assembly — members drawn by sortition for the current term.",
         type:              "builtin",
-        defaultVoteRuleId: "assembly-general",
+        defaultVoteRuleId: "simple-majority",
     },
     {
         id:                AUTHORITY_MEMBERSHIP,
         name:              "Full Membership",
         description:       "All active members — asynchronous online referendum.",
         type:              "builtin",
-        defaultVoteRuleId: "referendum-general",
+        defaultVoteRuleId: "absolute-majority",
     },
 ];
 

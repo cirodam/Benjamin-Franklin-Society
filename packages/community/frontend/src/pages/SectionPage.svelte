@@ -2,6 +2,7 @@
     import {
         getConstitution,
         getBylaw,
+        listVoteRules,
         updateConstitutionSection,
         updateBylawSection,
     } from "../lib/api.js";
@@ -11,9 +12,11 @@
         DocumentSection,
         GoverningDocumentDto,
         BylawDto,
+        VoteRule,
     } from "../lib/api.js";
     import { currentPage, session, selectedSection } from "../lib/session.js";
     import { formatDate } from "../lib/utils.js";
+    import VoteRuleDetails from "../components/VoteRuleDetails.svelte";
 
     const ctx         = $derived($selectedSection);
     const isSteward   = $derived($session?.isSteward ?? false);
@@ -21,6 +24,7 @@
     // Loaded data
     let constitution: ConstitutionDto | null = $state(null);
     let bylawDoc:     BylawDto | null        = $state(null);
+    let voteRules:    VoteRule[]             = $state([]);
     let loading = $state(true);
     let error   = $state("");
 
@@ -34,11 +38,12 @@
         const c = ctx;
         if (!c) return;
         loading = true; error = ""; constitution = null; bylawDoc = null;
-        const p = c.docId === "constitution"
+        const docP = c.docId === "constitution"
             ? getConstitution().then(d => { constitution = d; })
             : getBylaw(c.docId).then(d  => { bylawDoc = d;  });
-        p.catch(e => { error = e instanceof Error ? e.message : "Failed to load"; })
-         .finally(() => { loading = false; });
+        Promise.all([docP, listVoteRules().then(r => { voteRules = r; })])
+            .catch(e => { error = e instanceof Error ? e.message : "Failed to load"; })
+            .finally(() => { loading = false; });
     });
 
     // Derived: locate the section in whichever doc loaded
@@ -60,14 +65,9 @@
 
     const params = $derived(constitution?.meta.parameters ?? {});
 
-    function effectiveVoteRule(s: DocumentSection | null): string {
-        if (!s) return "";
-        const rule = s.voteRuleId ?? doc?.voteRuleId ?? null;
-        if (!rule) return "";
-        return rule
-            .replace(/-/g, " ")
-            .replace(/\b\w/g, c => c.toUpperCase());
-    }
+    const sectionHasOwnRule = $derived(
+        !!section?.voteRuleId && section.voteRuleId !== doc?.voteRuleId
+    );
 
     // ── Param chip helpers (constitution only) ────────────────────────────────
 
@@ -167,16 +167,21 @@
                 {:else}
                     <span class="chip chip-neutral">Sunsets: never</span>
                 {/if}
-                {#if effectiveVoteRule(section) && ctx?.docId !== "charter"}
-                    <span class="chip chip-rule" title="Vote rule required to amend this section">
-                        {effectiveVoteRule(section)}
-                        {#if section.voteRuleId && section.voteRuleId !== doc.voteRuleId}
-                            <span class="chip-override">§ override</span>
-                        {/if}
-                    </span>
-                {/if}
             </div>
         </div>
+
+        {#if ctx?.docId !== "charter" && (section.voteRuleId || doc.voteRuleId)}
+            <div class="section-vote-rule">
+                <div class="svr-label">
+                    {sectionHasOwnRule ? "Amendment rule (section override)" : "Amendment rule"}
+                </div>
+                <VoteRuleDetails
+                    ruleId={section.voteRuleId}
+                    fallbackId={doc.voteRuleId}
+                    rules={voteRules}
+                />
+            </div>
+        {/if}
 
         <!-- Body -->
         <div class="section-body-wrapper">
@@ -308,12 +313,20 @@
     .chip-neutral  { background: #f1f5f9; color: #475569; }
     .chip-sunset   { background: #fef3c7; color: #b45309; }
     .chip-warn     { background: #fee2e2; color: #b91c1c; }
-    .chip-rule     { background: #dcfce7; color: #15803d; }
 
-    .chip-override {
-        font-size: 0.65rem;
-        font-weight: 500;
-        opacity: 0.7;
+    /* ── Vote rule ──────────────────────────────────────────────────────── */
+
+    .section-vote-rule {
+        margin-bottom: 1.5rem;
+    }
+
+    .svr-label {
+        font-size:      0.68rem;
+        font-weight:    700;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        color:          #94a3b8;
+        margin-bottom:  0.4rem;
     }
 
     /* ── Body ───────────────────────────────────────────────────────────── */

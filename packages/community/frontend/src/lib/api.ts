@@ -1300,15 +1300,11 @@ export async function getAuthorities(): Promise<AuthorityDto[]> {
     return res.json() as Promise<AuthorityDto[]>;
 }
 
-export type VoteLegitimacy   = "absolute-majority" | "majority-of-votes" | "petition";
-export type VoteJurisdiction = "referendum" | "assembly" | "pool";
-export type VoteEligibility  = "all-members" | "assembly-members" | "pool-members";
+export type VoteLegitimacy = "absolute-majority" | "majority-of-votes" | "petition";
 
 export interface VoteRule {
     id:                string;
     label:             string;
-    jurisdiction:      VoteJurisdiction;
-    eligibility:       VoteEligibility;
     legitimacy:        VoteLegitimacy;
     thresholdFraction?: number;
     deliberationDays:   number;

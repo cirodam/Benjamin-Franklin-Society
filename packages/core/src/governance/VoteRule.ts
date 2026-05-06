@@ -6,17 +6,9 @@ export type VoteLegitimacy =
     | "majority-of-votes"   // N% of votes CAST must approve
     | "petition";           // fixed minApprovals count; no reject side
 
-/** Which governing body has jurisdiction over this vote. */
-export type VoteJurisdiction = "referendum" | "assembly" | "pool";
-
-/** Who is eligible to cast a ballot. */
-export type VoteEligibility = "all-members" | "assembly-members" | "pool-members";
-
 export interface VoteRule {
     id:                string;
     label:             string;
-    jurisdiction:      VoteJurisdiction;
-    eligibility:       VoteEligibility;
     legitimacy:        VoteLegitimacy;
     /**
      * Fraction of eligible voters required to pass.
@@ -38,15 +30,13 @@ export interface VoteRule {
 
 export const VOTE_RULES: Record<string, VoteRule> = {
     /**
-     * Constitutional Referendum — highest bar.
-     * Requires 2/3 of ALL members to approve. 7-day deliberation, 14-day voting window.
+     * Absolute Supermajority — highest bar.
+     * Requires 2/3 of ALL eligible voters to approve. 7-day deliberation, 14-day voting window.
      * Use for: constitutional amendments, founding/dissolving institutions.
      */
-    "referendum-constitutional": {
-        id:                "referendum-constitutional",
-        label:             "Constitutional Referendum",
-        jurisdiction:      "referendum",
-        eligibility:       "all-members",
+    "absolute-supermajority": {
+        id:                "absolute-supermajority",
+        label:             "Absolute Supermajority",
         legitimacy:        "absolute-majority",
         thresholdFraction: 0.67,
         deliberationDays:  7,
@@ -54,15 +44,13 @@ export const VOTE_RULES: Record<string, VoteRule> = {
     },
 
     /**
-     * General Referendum — standard membership vote.
-     * Requires a majority of ALL members to approve. 3-day deliberation, 7-day window.
+     * Absolute Majority — standard referendum.
+     * Requires a majority of ALL eligible voters to approve. 3-day deliberation, 7-day window.
      * Use for: monetary parameters, major policy, anything requiring full legitimacy.
      */
-    "referendum-general": {
-        id:                "referendum-general",
-        label:             "General Referendum",
-        jurisdiction:      "referendum",
-        eligibility:       "all-members",
+    "absolute-majority": {
+        id:                "absolute-majority",
+        label:             "Absolute Majority",
         legitimacy:        "absolute-majority",
         thresholdFraction: 0.51,
         deliberationDays:  3,
@@ -70,15 +58,12 @@ export const VOTE_RULES: Record<string, VoteRule> = {
     },
 
     /**
-     * Assembly Motion — standard deliberative body vote.
-     * Majority of assembly members present. No deliberation period; 2-day window.
-     * Use for: most contested community matters referred to the assembly.
+     * Simple Majority — majority of votes cast. No deliberation period; 2-day window.
+     * Use for: most assembly and pool decisions.
      */
-    "assembly-general": {
-        id:                "assembly-general",
-        label:             "Assembly Motion",
-        jurisdiction:      "assembly",
-        eligibility:       "assembly-members",
+    "simple-majority": {
+        id:                "simple-majority",
+        label:             "Simple Majority",
         legitimacy:        "majority-of-votes",
         thresholdFraction: 0.51,
         deliberationDays:  0,
@@ -86,33 +71,14 @@ export const VOTE_RULES: Record<string, VoteRule> = {
     },
 
     /**
-     * Assembly Supermajority — elevated assembly vote.
-     * 2/3 of assembly members must approve. No deliberation; 2-day window.
+     * Supermajority — 2/3 of votes cast. No deliberation; 2-day window.
      * Use for: significant policy changes, referring matters to referendum.
      */
-    "assembly-supermajority": {
-        id:                "assembly-supermajority",
-        label:             "Assembly Supermajority",
-        jurisdiction:      "assembly",
-        eligibility:       "assembly-members",
+    "supermajority": {
+        id:                "supermajority",
+        label:             "Supermajority",
         legitimacy:        "majority-of-votes",
         thresholdFraction: 0.67,
-        deliberationDays:  0,
-        votingWindowDays:  2,
-    },
-
-    /**
-     * Pool Vote — delegated operational vote.
-     * Majority of pool members. No deliberation; 2-day window.
-     * Use for: operational decisions within the pool's subject jurisdiction.
-     */
-    "pool-general": {
-        id:                "pool-general",
-        label:             "Pool Vote",
-        jurisdiction:      "pool",
-        eligibility:       "pool-members",
-        legitimacy:        "majority-of-votes",
-        thresholdFraction: 0.51,
         deliberationDays:  0,
         votingWindowDays:  2,
     },
@@ -126,8 +92,6 @@ export const VOTE_RULES: Record<string, VoteRule> = {
     "petition": {
         id:               "petition",
         label:            "Petition",
-        jurisdiction:     "referendum",
-        eligibility:      "all-members",
         legitimacy:       "petition",
         deliberationDays: 0,
         votingWindowDays: 0,
