@@ -2,8 +2,9 @@ import { Request, Response } from "express";
 import { MotionService } from "../governance/MotionService.js";
 import { Motion } from "../governance/Motion.js";
 import { PersonService } from "../person/PersonService.js";
-import { Constitution } from "../governance/Constitution.js";
+import { ConstitutionLoader } from "../governance/ConstitutionLoader.js";
 import { effectRegistry } from "../governance/EffectRegistry.js";
+import { AuthorityService } from "../governance/AuthorityService.js";
 import { getVoteRule, listVoteRules } from "@ecf/core";
 
 type AuthedRequest = Request & { personId?: string };
@@ -14,21 +15,22 @@ const ppl = () => PersonService.getInstance();
 function toDto(m: Motion) {
     const data = m.toData();
     // Strip internal UUIDs from the public DTO — handles are the member-facing identifiers.
-    const { proposerId: _pid, ...rest } = data as typeof data & { proposerId?: unknown };
+    const { proposerId: _pid, body: _body, ...rest } = data as typeof data & { proposerId?: unknown; body?: unknown };
     return {
         ...rest,
+        authorityId: m.authorityId,
         votes:    data.votes.map(({ personId: _vpid, ...v }) => v),
         comments: data.comments.map(({ authorId: _acid, ...c }) => c),
     };
 }
 
-// GET /api/motions?body=referendum&stage=deliberating&kind=add-person
+// GET /api/motions?authorityId=assembly&stage=deliberating&kind=add-person
 export function listMotions(req: Request, res: Response): void {
-    const { body, stage, kind } = req.query;
+    const { authorityId, stage, kind } = req.query;
     let results = svc().getAll();
-    if (typeof body  === "string") results = results.filter(m => m.body  === body);
-    if (typeof stage === "string") results = results.filter(m => m.stage === stage);
-    if (typeof kind  === "string") results = results.filter(m => m.kind  === kind);
+    if (typeof authorityId === "string") results = results.filter(m => m.authorityId === authorityId);
+    if (typeof stage       === "string") results = results.filter(m => m.stage       === stage);
+    if (typeof kind        === "string") results = results.filter(m => m.kind        === kind);
     results.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     res.json(results.map(toDto));
 }
@@ -40,20 +42,25 @@ export function getMotion(req: Request, res: Response): void {
     res.json(toDto(m));
 }
 
+// GET /api/authorities
+export function listAuthorities(_req: Request, res: Response): void {
+    res.json(AuthorityService.getInstance().getAll());
+}
+
 // GET /api/motions/effects
 export function listEffects(_req: Request, res: Response): void {
     res.json(effectRegistry.listKinds());
 }
 
 // POST /api/motions
-// Body: { body, title, description, parentId?, kind?, payload? }
+// Body: { authorityId, title, description, parentId?, kind?, payload? }
 export function createMotion(req: AuthedRequest, res: Response): void {
     const personId = req.personId;
     if (!personId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
-    const { body, title, description, parentId, kind, payload, premises, expectedOutcome } = req.body ?? {};
+    const { authorityId, title, description, parentId, kind, payload, premises, expectedOutcome } = req.body ?? {};
 
-    if (typeof body  !== "string" || !body.trim())  { res.status(400).json({ error: "body is required" }); return; }
+    if (typeof authorityId !== "string" || !authorityId.trim()) { res.status(400).json({ error: "authorityId is required" }); return; }
     if (typeof title !== "string" || !title.trim()) { res.status(400).json({ error: "title is required" }); return; }
     if (typeof description !== "string" || !description.trim()) { res.status(400).json({ error: "description is required" }); return; }
 
@@ -75,7 +82,7 @@ export function createMotion(req: AuthedRequest, res: Response): void {
 
     try {
         const motion = svc().create({
-            body:            body.trim(),
+            authorityId:     authorityId.trim(),
             title:           title.trim(),
             description:     description.trim(),
             proposerId:      personId,
@@ -112,7 +119,7 @@ export function submitForDeliberation(req: AuthedRequest, res: Response): void {
 
     // If the motion kind is a constitutional action, the vote rule is mandated.
     const constitutionalRule = motion.kind
-        ? Constitution.getInstance().getRequiredVoteRule(motion.kind)
+        ? ConstitutionLoader.getInstance().getRequiredVoteRule(motion.kind)
         : null;
 
     let resolvedRuleId: string;
@@ -234,35 +241,34 @@ export function recordDissent(req: AuthedRequest, res: Response): void {
     }
 }
 
-// POST /api/motions/:id/discuss  (steward clerk action)
+// POST /api/motions/:id/discuss  (admin override — force motion to deliberation)
 export function markDiscussed(req: AuthedRequest, res: Response): void {
+    const personId = req.personId;
+    if (!personId) { res.status(401).json({ error: "Unauthorized" }); return; }
     try {
-        const motion = svc().markDiscussed(req.params.id as string);
+        const motion = svc().submitForDeliberation(req.params.id as string, personId);
         res.json(toDto(motion));
     } catch (err) {
         res.status(400).json({ error: (err as Error).message });
     }
 }
 
-// POST /api/motions/:id/outcome  (steward clerk action)
-// Body: { outcome: "passed" | "failed" | "withdrawn" | "referred", outcomeNote? }
+// POST /api/motions/:id/outcome  (admin override — force-resolve)
 export function recordOutcome(req: AuthedRequest, res: Response): void {
     const { outcome, outcomeNote } = req.body ?? {};
     const validOutcomes = ["passed", "failed", "withdrawn", "referred"];
     if (!validOutcomes.includes(outcome as string)) {
         res.status(400).json({ error: `outcome must be one of: ${validOutcomes.join(", ")}` }); return;
     }
-
-    try {
-        const motion = svc().recordOutcome(
-            req.params.id as string,
-            outcome as "passed" | "failed" | "withdrawn" | "referred",
-            typeof outcomeNote === "string" ? outcomeNote : "",
-        );
-        res.json(toDto(motion));
-    } catch (err) {
-        res.status(400).json({ error: (err as Error).message });
-    }
+    const m = svc().get(req.params.id as string);
+    if (!m) { res.status(404).json({ error: "Motion not found" }); return; }
+    if (m.isResolved) { res.status(400).json({ error: "Motion already resolved" }); return; }
+    // Force-resolve without going through the normal lifecycle
+    m.stage       = "resolved";
+    m.outcome     = outcome as "passed" | "failed" | "withdrawn" | "referred";
+    m.outcomeNote = typeof outcomeNote === "string" ? outcomeNote : "";
+    m.resolvedAt  = new Date().toISOString();
+    res.json(toDto(m));
 }
 
 // DELETE /api/motions/:id  (withdraw)

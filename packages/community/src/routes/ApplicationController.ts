@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { MotionService } from "../governance/MotionService.js";
 import { effectRegistry } from "../governance/EffectRegistry.js";
 import { Motion } from "../governance/Motion.js";
-import { Constitution } from "../governance/Constitution.js";
+import { ConstitutionLoader } from "../governance/ConstitutionLoader.js";
 
 const motionSvc = () => MotionService.getInstance();
 
@@ -41,11 +41,11 @@ export function publicSubmitApplication(req: Request, res: Response): void {
     const payloadErr = effectRegistry.validatePayload("add-person", { firstName: fn, lastName: ln, birthDate });
     if (payloadErr) { res.status(400).json({ error: payloadErr }); return; }
 
-    const minApprovals = Constitution.getInstance().memberAdmissionVouchesRequired;
+    const minApprovals = ConstitutionLoader.getInstance().memberAdmissionVouchesRequired;
 
     try {
         const motion = motionSvc().create({
-            body:           "referendum",
+            authorityId:    "membership",
             title:          `Membership application: ${fn} ${ln}`,
             description:    message.trim(),
             proposerId:     "public",

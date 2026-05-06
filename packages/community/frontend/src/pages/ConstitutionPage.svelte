@@ -1,34 +1,26 @@
 <script lang="ts">
     import {
-        getConstitution,
-        updateConstitutionParameter,
-        updateConstitutionSection,
+        getConstitution, getAuthorities, listVoteRules,
     } from "../lib/api.js";
-    import type { ConstitutionDocument, ConstitutionParam, DocumentSection } from "../lib/api.js";
-    import { currentPage, session } from "../lib/session.js";
+    import type { ConstitutionDto, ConstitutionParam, DocumentSection, AuthorityDto, VoteRule } from "../lib/api.js";
+    import { currentPage, session, selectedSection } from "../lib/session.js";
     import { formatDate } from "../lib/utils.js";
+    import AuthorityBadge from "../components/AuthorityBadge.svelte";
+    import VoteRuleBadge from "../components/VoteRuleBadge.svelte";
 
-    let doc: ConstitutionDocument | null = $state(null);
+    let con: ConstitutionDto | null = $state(null);
+    let authorities: AuthorityDto[] = $state([]);
+    let voteRules: VoteRule[] = $state([]);
+    const doc  = $derived(con?.doc  ?? null);
+    const meta = $derived(con?.meta ?? null);
     let loading = $state(true);
     let error = $state("");
-
-    // Param editing
-    let editingParamKey = $state<string | null>(null);
-    let editParamRaw    = $state(""); // raw input string
-    let paramSaving     = $state(false);
-    let paramSaveError  = $state("");
-
-    // Section editing
-    let editingSectionId  = $state<string | null>(null);
-    let editSectionBody   = $state("");
-    let sectionSaving     = $state(false);
-    let sectionSaveError  = $state("");
 
     const isSteward = $derived($session?.isSteward ?? false);
 
     $effect(() => {
-        getConstitution()
-            .then(d => { doc = d; })
+        Promise.all([getConstitution(), getAuthorities(), listVoteRules()])
+            .then(([d, a, r]) => { con = d; authorities = a; voteRules = r; })
             .catch(e => { error = e instanceof Error ? e.message : "Failed to load constitution"; })
             .finally(() => { loading = false; });
     });
@@ -67,86 +59,15 @@
         return segments;
     }
 
-    function canEditParam(key: string, params: Record<string, ConstitutionParam>): boolean {
-        return isSteward && (params[key]?.authority ?? "immutable") !== "immutable";
-    }
-
-    function canEditSection(section: DocumentSection): boolean {
-        return isSteward && section.amendAuthority !== "immutable";
-    }
-
-    function startEditParam(key: string, params: Record<string, ConstitutionParam>) {
-        if (!canEditParam(key, params)) return;
-        const p = params[key];
-        if (typeof p.value === "number") {
-            editParamRaw = isRateParam(p)
-                ? String((p.value * 100).toFixed(2))
-                : String(p.value);
-        } else {
-            editParamRaw = String(p.value);
-        }
-        paramSaveError = "";
-        editingParamKey = key;
-    }
-
-    async function saveParam() {
-        if (!doc || !editingParamKey) return;
-        const p = doc.parameters[editingParamKey];
-        let newValue: number | boolean;
-        if (typeof p.value === "boolean") {
-            newValue = editParamRaw === "true";
-        } else {
-            const raw = parseFloat(editParamRaw);
-            if (isNaN(raw)) { paramSaveError = "Enter a valid number"; return; }
-            newValue = isRateParam(p) ? raw / 100 : raw;
-        }
-        paramSaving = true;
-        paramSaveError = "";
-        try {
-            await updateConstitutionParameter(editingParamKey, newValue);
-            // Optimistically update local copy
-            doc = {
-                ...doc,
-                parameters: {
-                    ...doc.parameters,
-                    [editingParamKey]: { ...p, value: newValue },
-                },
-            };
-            editingParamKey = null;
-        } catch (e) {
-            paramSaveError = e instanceof Error ? e.message : "Failed to save";
-        } finally {
-            paramSaving = false;
-        }
-    }
-
-    function startEditSection(section: DocumentSection) {
-        editSectionBody = section.body;
-        sectionSaveError = "";
-        editingSectionId = section.id;
-    }
-
-    async function saveSection() {
-        if (!doc || !editingSectionId) return;
-        sectionSaving = true;
-        sectionSaveError = "";
-        try {
-            const updated = await updateConstitutionSection(editingSectionId, editSectionBody);
-            doc = updated;
-            editingSectionId = null;
-        } catch (e) {
-            sectionSaveError = e instanceof Error ? e.message : "Failed to save";
-        } finally {
-            sectionSaving = false;
-        }
-    }
-
-    function authorityLabel(a: string): string {
-        const map: Record<string, string> = {
-            immutable: "Immutable", referendum: "Referendum", assembly: "Assembly",
-            council: "Council", commonwealth: "Commonwealth",
-        };
-        return map[a] ?? a;
+    function openSection(section: DocumentSection) {
+        if (!doc) return;
+        selectedSection.set({
+            docId:     "constitution",
+            docTitle:  `Constitution of ${meta!.communityName}`,
+            backPage:  "constitution",
+            sectionId: section.id,
+        });
+        currentPage.go("section");
     }
 </script>
 
@@ -159,24 +80,30 @@
         <div class="state-msg">Loading…</div>
     {:else if error}
         <div class="state-msg error">{error}</div>
-    {:else if doc}
+    {:else if con}
 
         <!-- Document header -->
         <div class="doc-header">
             <div class="doc-meta-row">
-                <span class="doc-meta-label">Version {doc.version}</span>
+                <span class="doc-meta-label">Version {meta!.version}</span>
                 <span class="doc-meta-sep">·</span>
-                <span class="doc-meta-label">Adopted {formatDate(doc.adoptedAt)}</span>
-                {#if doc.amendments.length > 0}
+                <span class="doc-meta-label">Adopted {formatDate(doc!.adoptedAt)}</span>
+                {#if meta!.amendments.length > 0}
                     <span class="doc-meta-sep">·</span>
-                    <span class="doc-meta-label">{doc.amendments.length} amendment{doc.amendments.length !== 1 ? "s" : ""}</span>
+                    <span class="doc-meta-label">{meta!.amendments.length} amendment{meta!.amendments.length !== 1 ? "s" : ""}</span>
                 {/if}
             </div>
-            <h1 class="doc-title">Constitution of {doc.communityName}</h1>
+            <h1 class="doc-title">Constitution of {meta!.communityName}</h1>
+            <div class="authority-badge">
+                <span class="authority-label">Authority</span>
+                <AuthorityBadge authorityId={doc!.authorityId} {authorities} />
+                <span class="authority-label">Amendment rule</span>
+                <VoteRuleBadge ruleId={doc!.voteRuleId} rules={voteRules} />
+            </div>
         </div>
 
         <!-- Articles -->
-        {#each (doc.articles ?? []) as article}
+        {#each (doc!.articles ?? []) as article}
             <section class="article">
                 <h2 class="article-heading">
                     <span class="article-number">Article {article.number}</span>
@@ -186,101 +113,49 @@
                     <p class="article-preamble">{article.preamble}</p>
                 {/if}
 
-                {#each article.sections as section}
-                    <div class="doc-section">
-                        {#if section.title}
-                            <h3 class="section-heading">
-                                <span class="section-id">§ {section.id}</span>
-                                {section.title}
-                            </h3>
-                        {/if}
-
-                        {#if editingSectionId === section.id}
-                            <!-- Section edit mode -->
-                            <div class="section-edit-area">
-                                <textarea
-                                    class="section-textarea"
-                                    rows={6}
-                                    bind:value={editSectionBody}
-                                    placeholder="Write section prose. Use {'{paramKey}'} to embed live values."
-                                    disabled={sectionSaving}
-                                ></textarea>
-                                <p class="edit-hint">Use {"{paramKey}"} to embed a live constitutional value inline.</p>
-                                {#if sectionSaveError}
-                                    <p class="edit-error">{sectionSaveError}</p>
+                <div class="section-list">
+                    {#each article.sections as section}
+                        <button class="section-btn" onclick={() => openSection(section)}>
+                            <div class="section-btn-top">
+                                <span class="section-btn-id">§ {section.id}</span>
+                                {#if section.title}
+                                    <span class="section-btn-title">{section.title}</span>
                                 {/if}
-                                <div class="edit-actions">
-                                    <button class="save-btn" onclick={saveSection} disabled={sectionSaving}>
-                                        {sectionSaving ? "Saving…" : "Save"}
-                                    </button>
-                                    <button class="cancel-btn" onclick={() => editingSectionId = null} disabled={sectionSaving}>
-                                        Cancel
-                                    </button>
-                                </div>
+                                <VoteRuleBadge ruleId={section.voteRuleId} fallbackId={doc!.voteRuleId} rules={voteRules} />
+                                {#if section.sunsetAt}
+                                    {@const expired = new Date(section.sunsetAt).getTime() <= Date.now()}
+                                    <span class="section-badge {expired ? 'badge-expired' : 'badge-sunset'}">
+                                        {expired ? "expired" : "sunsets " + formatDate(section.sunsetAt)}
+                                    </span>
+                                {/if}
                             </div>
-                        {:else}
-                            <!-- Section read mode -->
-                            <div class="section-body">
+                            <p class="section-btn-snippet">
                                 {#each parseBody(section.body) as seg}
-                                    {#if seg.type === "text"}
-                                        {seg.content}
-                                    {:else}
-                                        <!-- param chip -->
-                                        {#if editingParamKey === seg.key}
-                                            <span class="param-inline-edit">
-                                                <input
-                                                    class="param-input"
-                                                    type="number"
-                                                    bind:value={editParamRaw}
-                                                    step={isRateParam(doc.parameters[seg.key]) ? "0.1" : "1"}
-                                                    disabled={paramSaving}
-                                                    onkeydown={e => { if (e.key === "Enter") saveParam(); if (e.key === "Escape") editingParamKey = null; }}
-                                                />
-                                                {#if isRateParam(doc.parameters[seg.key])}
-                                                    <span class="param-input-unit">%</span>
-                                                {/if}
-                                                <button class="param-confirm" onclick={saveParam} disabled={paramSaving} title="Save">✓</button>
-                                                <button class="param-cancel"  onclick={() => editingParamKey = null} title="Cancel">✕</button>
-                                                {#if paramSaveError}
-                                                    <span class="param-error">{paramSaveError}</span>
-                                                {/if}
-                                            </span>
-                                        {:else}
-                                            <button
-                                                class="param-chip"
-                                                class:editable={canEditParam(seg.key, doc.parameters)}
-                                                title={doc.parameters[seg.key]?.description ?? seg.key}
-                                                onclick={() => startEditParam(seg.key, doc.parameters)}
-                                                disabled={!canEditParam(seg.key, doc.parameters)}
-                                            >{fmtParam(seg.key, doc.parameters)}</button>
-                                        {/if}
-                                    {/if}
+                                    {#if seg.type === "text"}{seg.content}{:else}<span class="snippet-param">{fmtParam(seg.key, meta!.parameters)}</span>{/if}
                                 {/each}
-                            </div>
-                            {#if canEditSection(section)}
-                                <button class="section-edit-btn" onclick={() => startEditSection(section)}>
-                                    Edit prose
-                                </button>
-                            {/if}
-                        {/if}
-                    </div>
-                {/each}
+                            </p>
+                        </button>
+                    {/each}
+                </div>
             </section>
         {/each}
 
         <!-- Authority map -->
-        {#if doc.authorityMap.length > 0}
+        {#if meta!.authorityMap.length > 0}
             <section class="article authority-section">
                 <h2 class="article-heading">
                     <span class="article-number">Appendix</span>
                     Governance Actions
                 </h2>
                 <div class="action-grid">
-                    {#each doc.authorityMap as action}
+                    {#each meta!.authorityMap as action}
                         <div class="action-row">
                             <div class="action-top">
                                 <code class="action-name">{action.action}</code>
-                                <span class="body-badge body-{action.body}">{action.body}</span>
+                                <AuthorityBadge authorityId={action.body} {authorities} />
+                                {#if action.voteRuleId}
+                                    <VoteRuleBadge ruleId={action.voteRuleId} rules={voteRules} />
+                                {/if}
                             </div>
                             <p class="action-desc">{action.description}</p>
                         </div>
@@ -290,14 +165,14 @@
         {/if}
 
         <!-- Amendment history -->
-        {#if doc.amendments.length > 0}
+        {#if meta!.amendments.length > 0}
             <section class="article">
                 <h2 class="article-heading">
                     <span class="article-number">History</span>
                     Amendments
                 </h2>
                 <div class="amendment-list">
-                    {#each doc.amendments as a}
+                    {#each meta!.amendments as a}
                         <div class="amendment-row">
                             <span class="amend-version">v{a.version}</span>
                             <span class="amend-key">{a.parameter}</span>
@@ -397,153 +272,78 @@
         padding-left: 0.75rem;
     }
 
-    /* ── Sections ─────────────────────────────────────────────────────── */
+    /* ── Sections as buttons ──────────────────────────────────────────── */
 
-    .doc-section {
-        margin-bottom: 1.25rem;
-        position: relative;
-    }
-
-    .section-heading {
-        font-size: 0.8rem;
-        font-weight: 600;
-        color: #475569;
-        margin: 0 0 0.35rem;
-        display: flex;
-        gap: 0.4rem;
-        align-items: baseline;
-    }
-
-    .section-id {
-        color: #15803d;
-        font-weight: 700;
-        font-variant-numeric: tabular-nums;
-    }
-
-    .section-body {
-        font-size: 0.9rem;
-        color: #1e293b;
-        line-height: 1.75;
-    }
-
-    /* ── Param chips ──────────────────────────────────────────────────── */
-
-    .param-chip {
-        display: inline;
-        background: #dcfce7;
-        color: #15803d;
-        border: 1px solid #a7f3d0;
-        border-radius: 4px;
-        padding: 0.05rem 0.35rem;
-        font-size: 0.875rem;
-        font-weight: 600;
-        font-variant-numeric: tabular-nums;
-        line-height: inherit;
-        cursor: default;
-        vertical-align: baseline;
-    }
-
-    .param-chip.editable {
-        cursor: pointer;
-    }
-
-    .param-chip.editable:hover {
-        background: #bbf7d0;
-        border-color: #86efac;
-    }
-
-    .param-chip:disabled {
-        /* non-editable chips look static */
-        cursor: default;
-    }
-
-    /* ── Inline param edit ────────────────────────────────────────────── */
-
-    .param-inline-edit {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.2rem;
-        vertical-align: baseline;
-    }
-
-    .param-input {
-        width: 5.5rem;
-        padding: 0.1rem 0.35rem;
-        border: 1px solid #86efac;
-        border-radius: 4px;
-        font-size: 0.875rem;
-        font-weight: 600;
-        color: #15803d;
-        background: #f0fdf4;
-        text-align: right;
-    }
-
-    .param-input-unit {
-        font-size: 0.8rem;
-        color: #15803d;
-        font-weight: 600;
-    }
-
-    .param-confirm, .param-cancel {
-        background: none;
-        border: none;
-        cursor: pointer;
-        font-size: 0.85rem;
-        padding: 0 0.15rem;
-        line-height: 1;
-    }
-
-    .param-confirm { color: #15803d; }
-    .param-cancel  { color: #94a3b8; }
-
-    .param-error {
-        font-size: 0.75rem;
-        color: #dc2626;
-    }
-
-    /* ── Section edit ─────────────────────────────────────────────────── */
-
-    .section-edit-btn {
-        margin-top: 0.35rem;
-        background: none;
-        border: 1px solid #d1fae5;
-        border-radius: 6px;
-        color: #15803d;
-        font-size: 0.75rem;
-        padding: 0.2rem 0.6rem;
-        cursor: pointer;
-        opacity: 0.7;
-    }
-
-    .section-edit-btn:hover { opacity: 1; background: #f0fdf4; }
-
-    .section-edit-area {
+    .section-list {
         display: flex;
         flex-direction: column;
         gap: 0.5rem;
     }
 
-    .section-textarea {
+    .section-btn {
+        display: block;
         width: 100%;
-        border: 1px solid #86efac;
-        border-radius: 8px;
-        padding: 0.75rem;
+        text-align: left;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 0.75rem 1rem;
+        cursor: pointer;
+        transition: border-color 0.12s, box-shadow 0.12s;
+    }
+    .section-btn:hover {
+        border-color: #86efac;
+        box-shadow: 0 1px 4px rgba(21, 128, 61, 0.07);
+    }
+
+    .section-btn-top {
+        display: flex;
+        align-items: baseline;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        margin-bottom: 0.3rem;
+    }
+
+    .section-btn-id {
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: #15803d;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        flex-shrink: 0;
+    }
+
+    .section-btn-title {
         font-size: 0.875rem;
-        line-height: 1.65;
-        resize: vertical;
-        color: #1e293b;
-        background: #f0fdf4;
-        font-family: inherit;
-        box-sizing: border-box;
+        font-weight: 600;
+        color: #0f172a;
     }
 
-    .edit-hint {
-        font-size: 0.75rem;
+    .section-badge {
+        font-size: 0.65rem;
+        font-weight: 600;
+        padding: 0.1rem 0.45rem;
+        border-radius: 999px;
+        margin-left: auto;
+    }
+    .badge-expired { background: #fee2e2; color: #b91c1c; }
+    .badge-sunset  { background: #fef3c7; color: #b45309; }
+
+    .section-btn-snippet {
+        font-size: 0.82rem;
         color: #64748b;
+        line-height: 1.5;
         margin: 0;
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
     }
 
-    /* .edit-error / .edit-actions / .save-btn / .cancel-btn — shared in app.css under .doc-viewer */
+    .snippet-param {
+        color: #15803d;
+        font-weight: 600;
+    }
 
     /* ── Authority section ────────────────────────────────────────────── */
 
@@ -591,21 +391,6 @@
         line-height: 1.4;
         margin: 0;
     }
-
-    .body-badge {
-        font-size: 0.62rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        border-radius: 99px;
-        padding: 0.1rem 0.45rem;
-        flex-shrink: 0;
-    }
-
-    .body-referendum { background: #dbeafe; color: #1d4ed8; }
-    .body-assembly   { background: #dcfce7; color: #15803d; }
-    .body-council    { background: #fef3c7; color: #d97706; }
-    .body-commonwealth { background: #ede9fe; color: #7c3aed; }
 
     /* ── Amendments ───────────────────────────────────────────────────── */
 

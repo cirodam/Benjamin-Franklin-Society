@@ -24,10 +24,10 @@ import { CommunityRoleLoader } from "./common/domain/CommunityRoleLoader.js";
 import { FunctionalUnitLoader } from "./common/domain/FunctionalUnitLoader.js";
 import { FunctionalDomainLoader } from "./common/domain/FunctionalDomainLoader.js";
 import { LeaderPoolLoader } from "./governance/LeaderPoolLoader.js";
-import { Constitution } from "./governance/Constitution.js";
 import { ConstitutionLoader } from "./governance/ConstitutionLoader.js";
 import { MotionLoader } from "./governance/MotionLoader.js";
 import { MotionService } from "./governance/MotionService.js";
+import { AuthorityLoader } from "./governance/AuthorityLoader.js";
 import "./governance/effects/index.js"; // register built-in motion effect handlers
 import { DomainService } from "./DomainService.js";
 import { BankClient } from "@ecf/core";
@@ -140,9 +140,18 @@ async function main(): Promise<void> {
     );
 
     // ── Constitution ───────────────────────────────────────────────────────
-    const constitutionLoader = new ConstitutionLoader();
-    constitutionLoader.load();
-    Constitution.getInstance().init(constitutionLoader);
+    ConstitutionLoader.getInstance().load();
+
+    // ── Charter (seed on existing installs if missing) ────────────────────
+    {
+        const { DocumentLoader }    = await import("./governance/DocumentLoader.js");
+        const { makeDefaultCharter } = await import("./governance/CharterDefaults.js");
+        const docs = new DocumentLoader();
+        if (!docs.load("charter")) {
+            docs.save(makeDefaultCharter());
+            logger.info("Seeded default charter document");
+        }
+    }
 
     // ── Persons ────────────────────────────────────────────────────────────
     const personLoader = new PersonLoader();
@@ -171,6 +180,9 @@ async function main(): Promise<void> {
     // ── Motions ────────────────────────────────────────────────────────────
     const motionLoader = new MotionLoader();
     MotionService.getInstance().init(motionLoader);
+
+    // ── Authorities (seed built-ins) ────────────────────────────────────────
+    AuthorityLoader.getInstance().seedBuiltins();
 
     // ── Payment tokens ─────────────────────────────────────────────────────
     // Auto-assemble RoutableAddress from federation membership record when approved,
@@ -312,7 +324,7 @@ async function main(): Promise<void> {
     // All replica nodes share communitySigner, so they all return the same publicKey.
     app.get("/api/identity", (_req, res) => {
         const identity = NodeService.getInstance().getIdentity();
-        const handle   = Constitution.getInstance().communityHandle;
+        const handle   = ConstitutionLoader.getInstance().communityHandle;
         res.json({ id: identity.id, entityId: identity.entityId, publicKey: communitySigner.publicKeyHex, name: identity.name, handle });
     });
 
@@ -320,7 +332,7 @@ async function main(): Promise<void> {
     // Superset of /api/identity — adds memberCount so the federation can set the credit line.
     app.get("/api/federation/bootstrap", (_req, res) => {
         const identity    = NodeService.getInstance().getIdentity();
-        const handle      = Constitution.getInstance().communityHandle;
+        const handle      = ConstitutionLoader.getInstance().communityHandle;
         const memberCount = PersonService.getInstance().getAll().length;
         res.json({
             nodeId:      identity.id,
@@ -334,7 +346,8 @@ async function main(): Promise<void> {
     });
 
     app.get("/api/constitution", (_req, res) => {
-        res.json(Constitution.getInstance().toDocument());
+        const con = ConstitutionLoader.getInstance();
+        res.json({ doc: con.getDoc(), meta: con.getMeta() });
     });
 
     // Serve frontend

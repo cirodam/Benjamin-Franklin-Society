@@ -7,7 +7,7 @@
     const { onApply, onLogin }: { onApply?: () => void; onLogin?: () => void } = $props();
 
     let communityName = $state("");
-    $effect(() => { getConstitution().then(c => { communityName = c.communityName; }).catch(() => {}); });
+    $effect(() => { getConstitution().then(c => { communityName = c.meta.communityName; }).catch(() => {}); });
 
     let handle   = $state("");
     let password = $state("");

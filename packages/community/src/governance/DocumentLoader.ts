@@ -2,7 +2,7 @@ import { randomUUID } from "crypto";
 import { CommunityDb } from "../CommunityDb.js";
 import { type GoverningDocument, type DocumentArticle, type DocumentSection, extractParamKeys } from "../common/DocumentFramework.js";
 
-export class BylawLoader {
+export class DocumentLoader {
     private get db() { return CommunityDb.getInstance().db; }
 
     save(bylaw: GoverningDocument): void {
@@ -22,23 +22,25 @@ export class BylawLoader {
     }
 
     loadAll(): GoverningDocument[] {
-        const rows = this.db.prepare(`SELECT data FROM bylaws ORDER BY id`).all() as { data: string }[];
+        const rows = this.db.prepare(`SELECT data FROM bylaws WHERE id NOT IN ('constitution', 'charter') ORDER BY id`).all() as { data: string }[];
         return rows.map(r => JSON.parse(r.data) as GoverningDocument);
     }
 
-    create(title: string, preamble?: string, scope: string | null = null, sunsetYears?: number): GoverningDocument {
+    create(title: string, preamble?: string, authorityId: string = "assembly", domainId: string | null = null, sunsetYears?: number, voteRuleId: string = "assembly-general"): GoverningDocument {
         const expiresAt = (sunsetYears && sunsetYears > 0)
             ? new Date(Date.now() + sunsetYears * 365.25 * 24 * 3600 * 1000).toISOString()
             : null;
         const bylaw: GoverningDocument = {
-            id:        randomUUID(),
-            type:      "bylaw",
-            title:     title.trim(),
-            preamble:  preamble?.trim() || undefined,
-            articles:  [],
-            adoptedAt: new Date().toISOString(),
-            version:   1,
-            scope,
+            id:          randomUUID(),
+            type:        "bylaw",
+            title:       title.trim(),
+            preamble:    preamble?.trim() || undefined,
+            articles:    [],
+            adoptedAt:   new Date().toISOString(),
+            version:     1,
+            authorityId,
+            voteRuleId,
+            domainId,
             expiresAt,
         };
         this.save(bylaw);
@@ -61,7 +63,7 @@ export class BylawLoader {
         return bylaw;
     }
 
-    addSection(bylawId: string, articleNumber: string, sectionId: string, title: string, body: string): GoverningDocument {
+    addSection(bylawId: string, articleNumber: string, sectionId: string, title: string, body: string, opts?: { rationale?: string; sunsetAt?: string | null; voteRuleId?: string | null }): GoverningDocument {
         const bylaw = this.load(bylawId);
         if (!bylaw) throw new Error(`Bylaw ${bylawId} not found`);
         const article = bylaw.articles.find(a => a.number === articleNumber);
@@ -72,7 +74,10 @@ export class BylawLoader {
             title:          title.trim() || undefined,
             body:           body.trim(),
             paramKeys:      extractParamKeys(body),
-            amendAuthority: "assembly",
+            adoptedAt:      new Date().toISOString(),
+            rationale:      opts?.rationale?.trim() || undefined,
+            sunsetAt:       opts?.sunsetAt ?? null,
+            voteRuleId:     opts?.voteRuleId ?? null,
         };
         article.sections.push(section);
         this.save(bylaw);

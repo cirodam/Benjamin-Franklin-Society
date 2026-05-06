@@ -1,19 +1,24 @@
 <script lang="ts">
-    import { getConstitution, listBylaws, deleteBylaw } from "../lib/api.js";
-    import type { ConstitutionDocument, BylawDto } from "../lib/api.js";
+    import { getConstitution, listBylaws, deleteBylaw, getCharter, getAuthorities } from "../lib/api.js";
+    import type { ConstitutionDto, BylawDto, AuthorityDto } from "../lib/api.js";
     import { currentPage, session, selectedBylawId } from "../lib/session.js";
+    import AuthorityBadge from "../components/AuthorityBadge.svelte";
 
     const isSteward = $derived($session?.isSteward ?? false);
 
-    let constitution: ConstitutionDocument | null = $state(null);
+    let constitution: ConstitutionDto | null = $state(null);
+    let charter: BylawDto | null = $state(null);
     let bylaws: BylawDto[] = $state([]);
+    let authorities: AuthorityDto[] = $state([]);
     let loading = $state(true);
     let error   = $state("");
 
     async function load() {
         loading = true; error = "";
         try {
-            [constitution, bylaws] = await Promise.all([getConstitution(), listBylaws()]);
+            [constitution, charter, bylaws, authorities] = await Promise.all([
+                getConstitution(), getCharter(), listBylaws(), getAuthorities(),
+            ]);
         } catch (e) {
             error = e instanceof Error ? e.message : "Failed to load documents";
         } finally {
@@ -30,6 +35,10 @@
             await deleteBylaw(bylaw.id);
             bylaws = bylaws.filter(b => b.id !== bylaw.id);
         } catch { /* ignore */ }
+    }
+
+    function openCharter() {
+        currentPage.go("charter");
     }
 
     function openConstitution() {
@@ -71,21 +80,37 @@
         <div class="error-banner">{error}</div>
     {:else}
 
+        <!-- Charter card -->
+        {#if charter}
+            <div class="section-label">Charter</div>
+            <button class="doc-card" onclick={openCharter}>
+                <div class="doc-card-body">
+                    <div class="doc-title">{charter.title}</div>
+                    <div class="doc-meta">
+                        Adopted {formatDate(charter.adoptedAt)}
+                        · {charter.articles.length} article{charter.articles.length !== 1 ? "s" : ""}
+                    </div>
+                </div>
+                <span class="doc-arrow">›</span>
+            </button>
+        {/if}
+
         <!-- Constitution card -->
         {#if constitution}
             <div class="section-label">Constitution</div>
             <button class="doc-card" onclick={openConstitution}>
                 <div class="doc-card-body">
-                    <div class="doc-title">Constitution of {constitution.communityName}</div>
+                    <div class="doc-title">Constitution of {constitution.meta.communityName}</div>
                     <div class="doc-meta">
-                        Version {constitution.version} · Adopted {formatDate(constitution.adoptedAt)}
-                        {#if constitution.amendments.length > 0}
-                            · {constitution.amendments.length} amendment{constitution.amendments.length !== 1 ? "s" : ""}
+                        Version {constitution.meta.version} · Adopted {formatDate(constitution.doc.adoptedAt)}
+                        {#if constitution.meta.amendments.length > 0}
+                            · {constitution.meta.amendments.length} amendment{constitution.meta.amendments.length !== 1 ? "s" : ""}
                         {/if}
                     </div>
-                    {#if constitution.articles.length > 0}
-                        <div class="doc-toc">{constitution.articles.length} article{constitution.articles.length !== 1 ? "s" : ""}</div>
+                    {#if constitution.doc.articles.length > 0}
+                        <div class="doc-toc">{constitution.doc.articles.length} article{constitution.doc.articles.length !== 1 ? "s" : ""}</div>
                     {/if}
+                    <div class="doc-authority"><AuthorityBadge authorityId={constitution.doc.authorityId} {authorities} /></div>
                 </div>
                 <span class="doc-arrow">›</span>
             </button>
@@ -109,6 +134,9 @@
                             <div class="doc-title">{bylaw.title}</div>
                             <div class="doc-meta">
                                 Version {bylaw.version} · Adopted {formatDate(bylaw.adoptedAt)}
+                                {#if bylaw.domainId}
+                                    · <span class="domain-tag">{bylaw.domainId}</span>
+                                {/if}
                             </div>
                             {#if bylaw.expiresAt}
                                 <div class="expiry-badge expiry-{expiryStatus(bylaw)}">
@@ -120,6 +148,7 @@
                             {:else}
                                 <div class="doc-toc empty">No articles yet</div>
                             {/if}
+                            <div class="doc-authority"><AuthorityBadge authorityId={bylaw.authorityId} {authorities} /></div>
                         </div>
                         <div class="doc-card-actions">
                             {#if isSteward}
@@ -197,6 +226,9 @@
     .doc-meta  { font-size: 0.8rem; color: #64748b; margin-bottom: 0.2rem; }
     .doc-toc   { font-size: 0.78rem; color: #94a3b8; }
     .doc-toc.empty { font-style: italic; }
+    .doc-toc.authority-tag { color: #2b6cb0; }
+    .doc-authority { font-size: 0.78rem; color: #94a3b8; margin-top: 0.2rem; }
+    .domain-tag { font-style: italic; }
 
     .expiry-badge {
         display: inline-block;

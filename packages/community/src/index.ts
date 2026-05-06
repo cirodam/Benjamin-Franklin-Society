@@ -18,10 +18,10 @@ export { UnitTemplateRegistry } from "./common/domain/UnitTemplateRegistry.js";
 
 export { LeaderPool } from "./governance/LeaderPool.js";
 export { LeaderPoolLoader } from "./governance/LeaderPoolLoader.js";
-export { Constitution, VoteThreshold } from "./governance/Constitution.js";
-export type { ConstitutionDocument, ConstitutionAmendment, ConstitutionalParameter, ActionAuthority, ParameterAuthority, GovernanceBody } from "./governance/Constitution.js";
+export { VoteThreshold } from "./governance/Constitution.js";
+export type { ConstitutionAmendment, ConstitutionalParameter, ConstitutionMetadata, ActionAuthority, GovernanceBody } from "./governance/Constitution.js";
 export { ConstitutionLoader } from "./governance/ConstitutionLoader.js";
-export { BylawLoader } from "./governance/BylawLoader.js";
+export { DocumentLoader } from "./governance/DocumentLoader.js";
 
 export { CentralBank } from "./domains/central_bank/CentralBank.js";
 export { CentralBankLoader } from "./domains/central_bank/CentralBankLoader.js";

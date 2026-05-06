@@ -4,7 +4,6 @@
  */
 
 import { effectRegistry } from "../EffectRegistry.js";
-import { Constitution } from "../Constitution.js";
 import { ConstitutionLoader } from "../ConstitutionLoader.js";
 import { LeaderPool } from "../LeaderPool.js";
 import { Person } from "../../person/Person.js";
@@ -12,7 +11,7 @@ import { PersonService } from "../../person/PersonService.js";
 import { DomainService } from "../../DomainService.js";
 import { NominationService } from "../../nomination/NominationService.js";
 import { CalendarService } from "../../calendar/CalendarService.js";
-import { BylawLoader } from "../BylawLoader.js";
+import { DocumentLoader } from "../DocumentLoader.js";
 import { CommunityLogService } from "../../log/CommunityLogService.js";
 import { RoleType } from "../../common/RoleType.js";
 import { UnitType } from "../../common/domain/UnitType.js";
@@ -43,14 +42,14 @@ effectRegistry.register("amend-constitution", {
         const parameter = payload.parameter as string;
         const newValue  = payload.newValue  as number | boolean;
 
-        const constitution = Constitution.getInstance();
+        const constitution = ConstitutionLoader.getInstance();
         const oldValue     = constitution.getAll()[parameter]?.value;
         constitution.amend(parameter, newValue, motion.id);
-        new ConstitutionLoader().save();
+        ConstitutionLoader.getInstance().save();
 
         motion.outcomeNote =
             `Constitution amended: "${parameter}" changed from ${oldValue} to ${newValue} ` +
-            `(v${constitution.toDocument().version}).`;
+            `(v${constitution.version}).`;
     },
 });
 
@@ -71,10 +70,10 @@ effectRegistry.register("set-dues-rate", {
     handler({ motion, payload }) {
         const pct          = payload.rate as number;
         const rateDecimal  = pct / 100;
-        const constitution = Constitution.getInstance();
+        const constitution = ConstitutionLoader.getInstance();
         const oldPct       = Math.round(constitution.communityDuesRate * 10_000) / 100;
         constitution.amend("communityDuesRate", rateDecimal, motion.id);
-        new ConstitutionLoader().save();
+        ConstitutionLoader.getInstance().save();
         motion.outcomeNote = `Community dues rate changed from ${oldPct}% to ${pct}% per month.`;
         try {
             CommunityLogService.getInstance().write(
@@ -104,10 +103,10 @@ effectRegistry.register("set-retirement-age", {
     },
     handler({ motion, payload }) {
         const age          = payload.age as number;
-        const constitution = Constitution.getInstance();
+        const constitution = ConstitutionLoader.getInstance();
         const oldAge       = constitution.retirementAge;
         constitution.amend("retirementAge", age, motion.id);
-        new ConstitutionLoader().save();
+        ConstitutionLoader.getInstance().save();
         motion.outcomeNote = `Retirement age changed from ${oldAge} to ${age} years.`;
         try {
             CommunityLogService.getInstance().write(
@@ -137,10 +136,10 @@ effectRegistry.register("set-retirement-payout", {
     },
     handler({ motion, payload }) {
         const amount       = payload.amount as number;
-        const constitution = Constitution.getInstance();
+        const constitution = ConstitutionLoader.getInstance();
         const oldAmount    = constitution.retirementPayoutRate;
         constitution.amend("retirementPayoutRate", amount, motion.id);
-        new ConstitutionLoader().save();
+        ConstitutionLoader.getInstance().save();
         motion.outcomeNote = `Monthly retirement payout changed from ${oldAmount} to ${amount} kin/month.`;
         try {
             CommunityLogService.getInstance().write(
@@ -331,7 +330,7 @@ effectRegistry.register("accept-nomination", {
             if (role) {
                 role.memberId      = n.nomineeId;
                 role.termStartDate = new Date();
-                role.termEndDate   = Constitution.getInstance().currentTermWindow().end;
+                role.termEndDate   = ConstitutionLoader.getInstance().currentTermWindow().end;
                 domainSvc.saveRole(role);
             }
         }
@@ -433,24 +432,26 @@ effectRegistry.register("create-bylaw", {
         return null;
     },
     handler({ motion, payload }) {
-        const scope  = motion.body === "assembly" ? null : motion.body;
-        const loader = new BylawLoader();
+        const domainId   = motion.body === "assembly" ? null : motion.body;
+        const authorityId = motion.body === "assembly" ? "assembly" : `council:${motion.body}`;
+        const loader = new DocumentLoader();
         const sunsetYears = typeof payload.sunsetYears === "number" ? payload.sunsetYears : undefined;
         const bylaw  = loader.create(
             (payload.title as string).trim(),
             (payload.preamble as string | undefined)?.trim() || undefined,
-            scope,
+            authorityId,
+            domainId,
             sunsetYears,
         );
 
-        const scopeLabel  = scope ? ` (scoped to pool/body: ${scope})` : " (universal)";
+        const domainLabel = domainId ? ` (domain: ${domainId})` : " (universal)";
         const sunsetLabel = bylaw.expiresAt ? ` · expires ${new Date(bylaw.expiresAt).toLocaleDateString()}` : "";
-        motion.outcomeNote = `Bylaw created: "${bylaw.title}"${scopeLabel}${sunsetLabel} (id: ${bylaw.id}).`;
+        motion.outcomeNote = `Bylaw created: "${bylaw.title}"${domainLabel}${sunsetLabel} (id: ${bylaw.id}).`;
 
         try {
             CommunityLogService.getInstance().write(
                 "bylaw-created",
-                `New bylaw adopted: "${bylaw.title}"${scopeLabel}${sunsetLabel}.`,
+                `New bylaw adopted: "${bylaw.title}"${domainLabel}${sunsetLabel}.`,
                 { actorId: motion.proposerId, refId: bylaw.id },
             );
         } catch { /* non-fatal */ }
@@ -482,16 +483,16 @@ effectRegistry.register("amend-bylaw", {
         return null;
     },
     handler({ motion, payload }) {
-        const loader = new BylawLoader();
-        const bylawId = (payload.bylawId as string).trim();
+        const loader = new DocumentLoader();
+        const bylawId   = (payload.bylawId as string).trim();
         const bylaw   = loader.load(bylawId);
         if (!bylaw) throw new Error(`Bylaw ${bylawId} not found`);
 
-        // Scope check: non-assembly bodies may only amend their own bylaws
-        if (motion.body !== "assembly" && bylaw.scope !== motion.body) {
+        // Authority check: non-assembly bodies may only amend their own domain bylaws
+        if (motion.body !== "assembly" && bylaw.domainId !== motion.body) {
             throw new Error(
                 `Body "${motion.body}" may not amend bylaw "${bylaw.title}" ` +
-                `(scoped to "${bylaw.scope ?? "assembly"}")`,
+                `(domain: "${bylaw.domainId ?? "universal"}")`,
             );
         }
 

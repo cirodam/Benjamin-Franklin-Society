@@ -177,6 +177,12 @@ export class CommunityDb {
                 data TEXT NOT NULL
             );
 
+            -- ── Authorities ───────────────────────────────────────────────────────────
+            CREATE TABLE IF NOT EXISTS authorities (
+                id   TEXT PRIMARY KEY,
+                data TEXT NOT NULL
+            );
+
             -- ── Singleton records (key/value) ─────────────────────────────────────────
             CREATE TABLE IF NOT EXISTS singleton_records (
                 key  TEXT PRIMARY KEY,

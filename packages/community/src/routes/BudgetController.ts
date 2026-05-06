@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { CentralBank } from "../domains/central_bank/CentralBank.js";
 import { SocialInsuranceBank } from "../domains/social_insurance/SocialInsuranceBank.js";
 import { CommunityTreasury } from "../domains/community_treasury/CommunityTreasury.js";
-import { Constitution } from "../governance/Constitution.js";
+import { ConstitutionLoader } from "../governance/ConstitutionLoader.js";
 import { DomainService } from "../DomainService.js";
 import { PersonService } from "../person/PersonService.js";
 import { nodeBankClient as bankClient } from "../nodeBankClient.js";
@@ -20,7 +20,7 @@ import { CommunityLogService } from "../log/CommunityLogService.js";
 export async function getCommunityBudget(_req: Request, res: Response): Promise<void> {
     const cb       = CentralBank.getInstance();
     const treasury = CommunityTreasury.getInstance();
-    const constitution = Constitution.getInstance();
+    const constitution = ConstitutionLoader.getInstance();
 
     if (!cb.isReady() || !treasury.isReady()) {
         res.json({ ready: false });
@@ -85,7 +85,7 @@ export async function simulateStep(_req: Request, res: Response): Promise<void> 
     const cb         = CentralBank.getInstance();
     const treasury   = CommunityTreasury.getInstance();
     const si         = SocialInsuranceBank.getInstance();
-    const constitution = Constitution.getInstance();
+    const constitution = ConstitutionLoader.getInstance();
 
     if (!cb.isReady() || !treasury.isReady()) {
         res.status(503).json({ error: "Monetary institutions not ready" });

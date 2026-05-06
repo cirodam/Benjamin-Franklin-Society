@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { getPool, listPersons, listMotions, createMotion, submitMotionForDeliberation, listMotionEffects, markMotionDiscussed, recordMotionOutcome, updatePool } from "../lib/api.js";
+    import { getPool, listPersons, listMotions, createMotion, submitMotionForDeliberation, listMotionEffects, updatePool } from "../lib/api.js";
     import type { PoolDto, PersonDto, MotionDto, MotionOutcome, MotionEffectKind } from "../lib/api.js";
     import { currentPage, selectedPoolId, session, selectedMotionId } from "../lib/session.js";
     import EffectPayloadForm from "../components/EffectPayloadForm.svelte";
@@ -10,10 +10,6 @@
     let loading = $state(true);
     let error   = $state("");
     let docketError = $state("");
-
-    let outcomingId   = $state<string | null>(null);
-    let outcomeChoice = $state<MotionOutcome>("passed");
-    let outcomeNote   = $state("");
 
     let nominating     = $state(false);
     let petitionPersonId  = $state("");
@@ -43,7 +39,7 @@
         addingMotion = true; addMotionError = "";
         try {
             const m = await createMotion({
-                body:        poolId,
+                authorityId: `pool:${poolId}`,
                 title:       addMotionTitle.trim(),
                 description: addMotionDesc.trim(),
                 kind:        selectedKind || null,
@@ -65,7 +61,7 @@
         try {
             const person = persons.find(p => p.id === petitionPersonId);
             const m = await createMotion({
-                body:        "referendum",
+                authorityId: "membership",
                 title:       `Add ${person?.firstName} ${person?.lastName} to ${pool.name}`,
                 description: petitionDesc.trim() || `Petition to add @${person?.handle} to the ${pool.name} pool.`,
                 kind:        "add-pool-member",
@@ -90,7 +86,7 @@
             [pool, persons, motions] = await Promise.all([
                 getPool(poolId),
                 listPersons(),
-                listMotions({ body: poolId }),
+                listMotions({ authorityId: `pool:${poolId}` }),
             ]);
         } catch (e) {
             error = e instanceof Error ? e.message : "Failed to load pool";
@@ -107,23 +103,6 @@
     function openMotion(m: MotionDto) {
         selectedMotionId.set(m.id);
         currentPage.go("motion");
-    }
-
-    async function doMarkDiscussed(id: string) {
-        docketError = "";
-        try {
-            const updated = await markMotionDiscussed(id);
-            motions = motions.map(m => m.id === id ? updated : m);
-        } catch (e) { docketError = e instanceof Error ? e.message : "Failed"; }
-    }
-
-    async function doRecordOutcome(id: string) {
-        docketError = "";
-        try {
-            const updated = await recordMotionOutcome(id, outcomeChoice, outcomeNote);
-            motions = motions.map(m => m.id === id ? updated : m);
-            outcomingId = null; outcomeNote = "";
-        } catch (e) { docketError = e instanceof Error ? e.message : "Failed"; }
     }
 
     // Mandate editing
@@ -278,27 +257,6 @@
             <div class="docket-card">
                 <button class="docket-title" onclick={() => openMotion(m)}>{m.title}</button>
                 <span class="docket-stage">{m.stage}</span>
-                {#if isSteward && (m.stage === "proposed" || m.stage === "discussed")}
-                    <div class="docket-actions">
-                        {#if m.stage === "proposed"}
-                            <button class="btn-sm" onclick={() => doMarkDiscussed(m.id)}>Mark discussed</button>
-                        {/if}
-                        <button class="btn-sm" onclick={() => { outcomingId = m.id; outcomeChoice = "passed"; outcomeNote = ""; }}>Record outcome</button>
-                    </div>
-                {/if}
-                {#if outcomingId === m.id}
-                    <div class="outcome-inline">
-                        <select class="input-sm" bind:value={outcomeChoice}>
-                            <option value="passed">Passed</option>
-                            <option value="failed">Failed</option>
-                            <option value="withdrawn">Withdrawn</option>
-                            <option value="referred">Referred</option>
-                        </select>
-                        <input class="input-sm" type="text" placeholder="Notes" bind:value={outcomeNote} />
-                        <button class="btn-sm btn-primary-sm" onclick={() => doRecordOutcome(m.id)}>Save</button>
-                        <button class="btn-sm" onclick={() => outcomingId = null}>Cancel</button>
-                    </div>
-                {/if}
             </div>
         {/each}
         {#if resolvedMotions.length > 0}
@@ -440,7 +398,6 @@
     .docket-stage  { font-size: 0.72rem; color: #64748b; background: #f1f5f9; padding: 0.15rem 0.5rem; border-radius: 9999px; }
     .docket-outcome { font-size: 0.72rem; color: #64748b; }
     .docket-actions { display: flex; gap: 0.4rem; flex-basis: 100%; }
-    .outcome-inline { display: flex; gap: 0.4rem; flex-wrap: wrap; flex-basis: 100%; align-items: center; }
 
     .btn-sm { padding: 0.3rem 0.65rem; background: #f0fdf4; border: 1px solid #86efac; border-radius: 0.4rem; color: #15803d; font-size: 0.75rem; font-weight: 600; cursor: pointer; }
     .btn-primary-sm { background: #16a34a; color: #fff; border-color: #16a34a; }

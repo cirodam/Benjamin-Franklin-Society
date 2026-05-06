@@ -42,7 +42,7 @@ export interface PersonDto {
 
 export interface ConstitutionParam {
     value: number | boolean;
-    authority: string;
+    immutable: boolean;
     description: string;
     constraints?: { min?: number; max?: number };
 }
@@ -52,7 +52,10 @@ export interface DocumentSection {
     title?:         string;
     body:           string;
     paramKeys:      string[];
-    amendAuthority: string;
+    rationale?:     string;
+    sunsetAt?:      string | null;
+    /** Vote rule for amending/repealing this section. null = use document fallback. */
+    voteRuleId?:    string | null;
 }
 
 export interface DocumentArticle {
@@ -62,25 +65,43 @@ export interface DocumentArticle {
     sections:  DocumentSection[];
 }
 
-export interface ConstitutionDocument {
-    version: number;
-    adoptedAt: string;
-    communityName: string;
-    parameters: Record<string, ConstitutionParam>;
-    amendments: {
-        version: number;
-        parameter: string;
-        oldValue: number | boolean;
-        newValue: number | boolean;
-        proposalId: string;
-        amendedAt: string;
-    }[];
-    authorityMap: {
-        action: string;
-        body: string;
-        description: string;
-    }[];
-    articles: DocumentArticle[];
+export interface GoverningDocumentDto {
+    id:          string;
+    type:        string;
+    title:       string;
+    preamble?:   string;
+    authorityId: string;
+    /** Default vote rule for amending sections. Sections may override with their own voteRuleId. */
+    voteRuleId:  string;
+    domainId?:   string | null;
+    adoptedAt:   string;
+    version:     number;
+    expiresAt?:  string | null;
+    articles:    DocumentArticle[];
+}
+
+export interface ConstitutionAmendmentDto {
+    version:    number;
+    parameter:  string;
+    oldValue:   number | boolean;
+    newValue:   number | boolean;
+    proposalId: string;
+    amendedAt:  string;
+}
+
+export interface ConstitutionMetaDto {
+    documentId:      string;
+    version:         number;
+    communityName:   string;
+    communityHandle: string;
+    parameters:      Record<string, ConstitutionParam>;
+    amendments:      ConstitutionAmendmentDto[];
+    authorityMap:    { action: string; body: string; description: string; voteRuleId?: string }[];
+}
+
+export interface ConstitutionDto {
+    doc:  GoverningDocumentDto;
+    meta: ConstitutionMetaDto;
 }
 
 // ── Economics ─────────────────────────────────────────────────────────────────
@@ -440,10 +461,10 @@ export async function revokePersonApp(handle: string, app: string): Promise<Pers
 
 // ── Constitution ──────────────────────────────────────────────────────────────
 
-export async function getConstitution(): Promise<ConstitutionDocument> {
+export async function getConstitution(): Promise<ConstitutionDto> {
     const res = await fetch("/api/constitution");
     if (!res.ok) throw new Error("Failed to load constitution");
-    return res.json() as Promise<ConstitutionDocument>;
+    return res.json() as Promise<ConstitutionDto>;
 }
 
 export async function updateConstitutionParameter(key: string, value: number | boolean): Promise<void> {
@@ -457,7 +478,7 @@ export async function updateConstitutionParameter(key: string, value: number | b
     }
 }
 
-export async function updateConstitutionSection(sectionId: string, body: string): Promise<ConstitutionDocument> {
+export async function updateConstitutionSection(sectionId: string, body: string): Promise<ConstitutionDto> {
     const res = await apiFetch(`/api/constitution/sections/${encodeURIComponent(sectionId)}`, {
         method: "PATCH",
         body:   JSON.stringify({ body }),
@@ -466,29 +487,39 @@ export async function updateConstitutionSection(sectionId: string, body: string)
         const b = await res.json().catch(() => ({})) as { error?: string };
         throw new Error(b.error ?? "Failed to update section");
     }
-    return res.json() as Promise<ConstitutionDocument>;
+    return res.json() as Promise<ConstitutionDto>;
 }
 
 // ── Bylaws ────────────────────────────────────────────────────────────────────
 
 export interface BylawDto {
-    id:        string;
-    type:      string;
-    title:     string;
-    preamble?: string;
-    articles:  DocumentArticle[];
-    adoptedAt: string;
-    version:   number;
-    /** null = assembly-scope. Pool/domain id = scoped to that body. */
-    scope:     string | null;
+    id:          string;
+    type:        string;
+    title:       string;
+    preamble?:   string;
+    articles:    DocumentArticle[];
+    adoptedAt:   string;
+    version:     number;
+    /** Authority id that controls amendment of this document. */
+    authorityId: string;
+    /** Default vote rule for amending sections. Sections may override with their own voteRuleId. */
+    voteRuleId:  string;
+    /** Which domain/pool this document applies within. null = community-wide. */
+    domainId?:   string | null;
     /** ISO 8601 datetime after which this bylaw is considered expired. null/undefined = no expiry. */
-    expiresAt?: string | null;
+    expiresAt?:  string | null;
 }
 
 export async function listBylaws(): Promise<BylawDto[]> {
     const res = await apiFetch("/api/bylaws");
     if (!res.ok) throw new Error("Failed to load bylaws");
     return res.json() as Promise<BylawDto[]>;
+}
+
+export async function getCharter(): Promise<BylawDto> {
+    const res = await apiFetch("/api/charter");
+    if (!res.ok) throw new Error("Charter not found");
+    return res.json() as Promise<BylawDto>;
 }
 
 export async function getBylaw(id: string): Promise<BylawDto> {
@@ -1252,6 +1283,23 @@ export async function listExpiringRoles(days = 60): Promise<ExpiringRoleDto[]> {
 export type MotionStage   = "draft" | "deliberating" | "voting" | "resolved" | "proposed" | "discussed" | "voted";
 export type MotionOutcome = "passed" | "failed" | "withdrawn" | "referred";
 
+// ── Authorities ───────────────────────────────────────────────────────────────
+
+export interface AuthorityDto {
+    id:                string;
+    name:              string;
+    description?:      string;
+    type:              "builtin" | "pool";
+    poolId?:           string;
+    defaultVoteRuleId: string;
+}
+
+export async function getAuthorities(): Promise<AuthorityDto[]> {
+    const res = await apiFetch("/api/authorities");
+    if (!res.ok) throw new Error("Failed to load authorities");
+    return res.json() as Promise<AuthorityDto[]>;
+}
+
 export type VoteLegitimacy   = "absolute-majority" | "majority-of-votes" | "petition";
 export type VoteJurisdiction = "referendum" | "assembly" | "pool";
 export type VoteEligibility  = "all-members" | "assembly-members" | "pool-members";
@@ -1297,7 +1345,7 @@ export interface MotionEffectKind {
 
 export interface MotionDto {
     id:                   string;
-    body:                 string;
+    authorityId:          string;
     stage:                MotionStage;
     title:                string;
     description:          string;
@@ -1325,11 +1373,11 @@ export interface MotionDto {
     payload:              string | null;
 }
 
-export async function listMotions(opts: { body?: string; stage?: string; kind?: string } = {}): Promise<MotionDto[]> {
+export async function listMotions(opts: { authorityId?: string; stage?: string; kind?: string } = {}): Promise<MotionDto[]> {
     const params = new URLSearchParams();
-    if (opts.body)  params.set("body",  opts.body);
-    if (opts.stage) params.set("stage", opts.stage);
-    if (opts.kind)  params.set("kind",  opts.kind);
+    if (opts.authorityId) params.set("authorityId", opts.authorityId);
+    if (opts.stage)       params.set("stage",       opts.stage);
+    if (opts.kind)        params.set("kind",        opts.kind);
     const qs = params.toString();
     const res = await apiFetch(`/api/motions${qs ? `?${qs}` : ""}`);
     if (!res.ok) throw new Error("Failed to load motions");
@@ -1355,7 +1403,7 @@ export async function listVoteRules(): Promise<VoteRule[]> {
 }
 
 export async function createMotion(data: {
-    body:            string;
+    authorityId:     string;
     title:           string;
     description:     string;
     parentId?:       string;

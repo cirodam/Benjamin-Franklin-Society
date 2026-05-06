@@ -5,7 +5,7 @@ import { PersonService } from "../person/PersonService.js";
 import { CentralBank } from "../domains/central_bank/CentralBank.js";
 import { SocialInsuranceBank } from "../domains/social_insurance/SocialInsuranceBank.js";
 import { CommunityTreasury } from "../domains/community_treasury/CommunityTreasury.js";
-import { Constitution } from "../governance/Constitution.js";
+import { ConstitutionLoader } from "../governance/ConstitutionLoader.js";
 import { CommunityLogService } from "../log/CommunityLogService.js";
 
 /**
@@ -29,7 +29,7 @@ export function registerMonetaryHandlers(bank: BankClient): void {
         const centralBank  = CentralBank.getInstance();
         const siBank       = SocialInsuranceBank.getInstance();
         const treasury     = CommunityTreasury.getInstance();
-        const constitution = Constitution.getInstance();
+        const constitution = ConstitutionLoader.getInstance();
 
         try {
             // Don't open a second account if they already have one (e.g. access was revoked and re-granted)
@@ -81,7 +81,7 @@ export function registerMonetaryHandlers(bank: BankClient): void {
     PersonService.getInstance().onPersonDischarged(async (person) => {
         const centralBank  = CentralBank.getInstance();
         const treasury     = CommunityTreasury.getInstance();
-        const constitution = Constitution.getInstance();
+        const constitution = ConstitutionLoader.getInstance();
 
         if (!centralBank.isReady() || !treasury.isReady()) {
             logger.warn(`[community] monetary institutions not ready — skipping discharge settlement for @${person.handle}`);
@@ -138,7 +138,7 @@ export function registerMonetaryHandlers(bank: BankClient): void {
         const centralBank  = CentralBank.getInstance();
         const siBank       = SocialInsuranceBank.getInstance();
         const treasury     = CommunityTreasury.getInstance();
-        const constitution = Constitution.getInstance();
+        const constitution = ConstitutionLoader.getInstance();
 
         if (!centralBank.isReady() || !siBank.isReady() || !treasury.isReady()) {
             logger.warn(`[community] monetary institutions not ready — skipping annual issuance for @${person.handle}`);
@@ -180,7 +180,7 @@ export function registerMonetaryHandlers(bank: BankClient): void {
         const centralBank  = CentralBank.getInstance();
         const siBank       = SocialInsuranceBank.getInstance();
         const treasury     = CommunityTreasury.getInstance();
-        const constitution = Constitution.getInstance();
+        const constitution = ConstitutionLoader.getInstance();
         if (!centralBank.isReady() || !siBank.isReady() || !treasury.isReady()) {
             logger.warn("[community] monetary institutions not ready — skipping community dues collection");
             return;
@@ -228,7 +228,7 @@ export function registerMonetaryHandlers(bank: BankClient): void {
     const MS_PER_YEAR = 365.25 * 24 * 60 * 60 * 1000;
     const runRetirementPayouts = (): void => {
         const siBank       = SocialInsuranceBank.getInstance();
-        const constitution = Constitution.getInstance();
+        const constitution = ConstitutionLoader.getInstance();
         const personSvc    = PersonService.getInstance();
 
         if (!siBank.isReady()) {

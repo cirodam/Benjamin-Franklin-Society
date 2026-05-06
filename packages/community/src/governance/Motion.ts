@@ -1,24 +1,14 @@
 import {
     AssemblyMotion,
     AssemblyMotionData,
-    type ClerkStage,
-    type ReferendumStage,
     type MotionStage,
     type MotionOutcome,
 } from "@ecf/core";
 
 // Re-export shared types so existing consumers of this module keep working.
-export type { ClerkStage, ReferendumStage, MotionStage, MotionOutcome };
+export type { MotionStage, MotionOutcome };
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-
-/**
- * Which body owns this motion.
- * "referendum" — full membership votes asynchronously online.
- * "assembly"   — seated assembly deliberates in person; clerk records outcome.
- * any other string — the ID of a leader pool meeting in person.
- */
-export type MotionBody = "referendum" | "assembly" | string;
 
 export type CommentKind = "evidence" | "challenge" | "general";
 
@@ -48,7 +38,7 @@ export class Motion extends AssemblyMotion<MotionVote, MotionComment> {
     readonly proposerId: string;
 
     constructor(opts: {
-        body:            MotionBody;
+        authorityId:     string;
         title:           string;
         description:     string;
         proposerId:      string;
@@ -61,11 +51,17 @@ export class Motion extends AssemblyMotion<MotionVote, MotionComment> {
         id?:             string;
         createdAt?:      string;
     }) {
-        super(opts);
+        // Pass authorityId as body to the base class (body is the authority id).
+        super({ ...opts, body: opts.authorityId });
+        // All community motions follow a single lifecycle starting at "draft".
+        this.stage           = "draft";
         this.proposerId      = opts.proposerId;
         this.premises        = opts.premises        ?? null;
         this.expectedOutcome = opts.expectedOutcome ?? null;
     }
+
+    /** The authority that has jurisdiction over this motion. */
+    get authorityId(): string { return this.body; }
 
     hasVoted(personId: string): boolean {
         return this.votes.some(v => v.personId === personId);
@@ -78,7 +74,7 @@ export class Motion extends AssemblyMotion<MotionVote, MotionComment> {
     static fromData(d: MotionData): Motion {
         const m = new Motion({
             id:             d.id,
-            body:           d.body,
+            authorityId:    d.body,
             title:          d.title,
             description:    d.description,
             proposerId:     d.proposerId,

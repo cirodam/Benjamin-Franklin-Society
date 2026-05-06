@@ -1,48 +1,38 @@
 <script lang="ts">
-    import { getBylaw, updateBylawSection, addBylawArticle, addBylawSection } from "../lib/api.js";
-    import type { BylawDto, DocumentSection } from "../lib/api.js";
-    import { currentPage, session, selectedBylawId } from "../lib/session.js";
+    import { getBylaw, addBylawArticle, addBylawSection, listVoteRules, getAuthorities } from "../lib/api.js";
+    import type { BylawDto, VoteRule, AuthorityDto } from "../lib/api.js";
+    import { currentPage, session, selectedBylawId, selectedSection } from "../lib/session.js";
     import { formatDate } from "../lib/utils.js";
+    import VoteRuleBadge from "../components/VoteRuleBadge.svelte";
+    import AuthorityBadge from "../components/AuthorityBadge.svelte";
 
     const bylawId = $derived($selectedBylawId ?? "");
     const isSteward = $derived($session?.isSteward ?? false);
 
     let doc: BylawDto | null = $state(null);
+    let voteRules: VoteRule[]  = $state([]);
+    let authorities: AuthorityDto[] = $state([]);
     let loading = $state(true);
     let error   = $state("");
 
     $effect(() => {
         if (!bylawId) return;
         loading = true; error = "";
-        getBylaw(bylawId)
-            .then(d  => { doc = d; })
+        Promise.all([getBylaw(bylawId), listVoteRules(), getAuthorities()])
+            .then(([d, r, a]) => { doc = d; voteRules = r; authorities = a; })
             .catch(e => { error = e instanceof Error ? e.message : "Failed to load bylaw"; })
             .finally(() => { loading = false; });
     });
 
-    // ── Section editing ───────────────────────────────────────────────────────
-    let editingSectionId  = $state<string | null>(null);
-    let editSectionBody   = $state("");
-    let sectionSaving     = $state(false);
-    let sectionSaveError  = $state("");
-
-    function startEditSection(section: DocumentSection) {
-        editSectionBody = section.body;
-        sectionSaveError = "";
-        editingSectionId = section.id;
-    }
-
-    async function saveSection() {
-        if (!doc || !editingSectionId) return;
-        sectionSaving = true; sectionSaveError = "";
-        try {
-            doc = await updateBylawSection(doc.id, editingSectionId, editSectionBody);
-            editingSectionId = null;
-        } catch (e) {
-            sectionSaveError = e instanceof Error ? e.message : "Failed to save";
-        } finally {
-            sectionSaving = false;
-        }
+    function openSection(sectionId: string) {
+        if (!doc) return;
+        selectedSection.set({
+            docId:     doc.id,
+            docTitle:  doc.title,
+            backPage:  "bylaw",
+            sectionId,
+        });
+        currentPage.go("section");
     }
 
     // ── Add article form ──────────────────────────────────────────────────────
@@ -68,7 +58,7 @@
     }
 
     // ── Add section form ──────────────────────────────────────────────────────
-    let addingSectionForArticle = $state<string | null>(null); // article number
+    let addingSectionForArticle = $state<string | null>(null);
     let addSectionId    = $state("");
     let addSectionTitle = $state("");
     let addSectionBody  = $state("");
@@ -131,6 +121,12 @@
             {#if doc.preamble}
                 <p class="doc-preamble">{doc.preamble}</p>
             {/if}
+            <div class="doc-rule-row">
+                <span class="doc-rule-label">Authority</span>
+                <AuthorityBadge authorityId={doc.authorityId} {authorities} />
+                <span class="doc-rule-label">Amendment rule</span>
+                <VoteRuleBadge ruleId={doc.voteRuleId} rules={voteRules} />
+            </div>
         </div>
 
         <!-- Articles -->
@@ -144,41 +140,26 @@
                     <p class="article-preamble">{article.preamble}</p>
                 {/if}
 
-                {#each article.sections as section}
-                    <div class="doc-section">
-                        {#if section.title}
-                            <h3 class="section-heading">
-                                <span class="section-id">§ {section.id}</span>
-                                {section.title}
-                            </h3>
-                        {/if}
-
-                        {#if editingSectionId === section.id}
-                            <div class="section-edit-area">
-                                <textarea
-                                    class="section-textarea"
-                                    rows={6}
-                                    bind:value={editSectionBody}
-                                    disabled={sectionSaving}
-                                ></textarea>
-                                {#if sectionSaveError}
-                                    <p class="edit-error">{sectionSaveError}</p>
+                <div class="section-list">
+                    {#each article.sections as section}
+                        <button class="section-btn" onclick={() => openSection(section.id)}>
+                            <div class="section-btn-top">
+                                <span class="section-btn-id">§ {section.id}</span>
+                                {#if section.title}
+                                    <span class="section-btn-title">{section.title}</span>
                                 {/if}
-                                <div class="edit-actions">
-                                    <button class="save-btn" onclick={saveSection} disabled={sectionSaving}>
-                                        {sectionSaving ? "Saving…" : "Save"}
-                                    </button>
-                                    <button class="cancel-btn" onclick={() => editingSectionId = null} disabled={sectionSaving}>Cancel</button>
-                                </div>
+                                <VoteRuleBadge ruleId={section.voteRuleId} fallbackId={doc.voteRuleId} rules={voteRules} />
+                                {#if section.sunsetAt}
+                                    {@const expired = new Date(section.sunsetAt).getTime() <= Date.now()}
+                                    <span class="section-badge {expired ? 'badge-expired' : 'badge-sunset'}">
+                                        {expired ? "expired" : "sunsets " + formatDate(section.sunsetAt)}
+                                    </span>
+                                {/if}
                             </div>
-                        {:else}
-                            <p class="section-body">{section.body}</p>
-                            {#if isSteward}
-                                <button class="edit-link" onclick={() => startEditSection(section)}>Edit</button>
-                            {/if}
-                        {/if}
-                    </div>
-                {/each}
+                            <p class="section-btn-snippet">{section.body}</p>
+                        </button>
+                    {/each}
+                </div>
 
                 <!-- Add section to this article -->
                 {#if isSteward}
@@ -296,6 +277,8 @@
 
     .doc-title { font-size: 1.6rem; font-weight: 800; color: #0f172a; margin: 0 0 0.75rem; }
     .doc-preamble { font-size: 0.95rem; color: #475569; line-height: 1.7; font-style: italic; margin: 0; }
+    .doc-rule-row { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.75rem; }
+    .doc-rule-label { font-size: 0.72rem; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.04em; }
 
     /* Articles */
     .article {
@@ -324,31 +307,73 @@
     .article-preamble { font-size: 0.9rem; color: #64748b; font-style: italic; margin: 0 0 1rem; line-height: 1.6; }
 
     /* Sections */
-    .doc-section { margin-bottom: 1.25rem; }
+    .section-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
 
-    .section-heading {
-        font-size: 0.95rem;
+    .section-btn {
+        display: block;
+        width: 100%;
+        text-align: left;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 0.75rem 1rem;
+        cursor: pointer;
+        transition: border-color 0.12s, box-shadow 0.12s;
+    }
+    .section-btn:hover {
+        border-color: #86efac;
+        box-shadow: 0 1px 4px rgba(21, 128, 61, 0.07);
+    }
+
+    .section-btn-top {
+        display: flex;
+        align-items: baseline;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        margin-bottom: 0.3rem;
+    }
+
+    .section-btn-id {
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: #16a34a;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        flex-shrink: 0;
+    }
+
+    .section-btn-title {
+        font-size: 0.875rem;
         font-weight: 600;
         color: #0f172a;
-        margin: 0 0 0.35rem;
     }
 
-    .section-id {
-        font-size: 0.75rem;
-        color: #94a3b8;
-        font-weight: 500;
-        margin-right: 0.4rem;
+    .section-badge {
+        font-size: 0.65rem;
+        font-weight: 600;
+        padding: 0.1rem 0.45rem;
+        border-radius: 999px;
+        margin-left: auto;
+    }
+    .badge-expired { background: #fee2e2; color: #b91c1c; }
+    .badge-sunset  { background: #fef3c7; color: #b45309; }
+
+    .section-btn-snippet {
+        font-size: 0.82rem;
+        color: #64748b;
+        line-height: 1.5;
+        margin: 0;
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
     }
 
-    .section-body {
-        font-size: 0.95rem;
-        color: #334155;
-        line-height: 1.75;
-        margin: 0 0 0.25rem;
-        white-space: pre-wrap;
-    }
-
-    .edit-link, .add-link {
+    .add-link {
         background: none;
         border: none;
         cursor: pointer;
@@ -356,12 +381,10 @@
         color: #16a34a;
         padding: 0;
         font-weight: 500;
-        display: inline-block;
-        margin-top: 0.1rem;
+        display: block;
+        margin-top: 0.75rem;
     }
-    .edit-link:hover, .add-link:hover { text-decoration: underline; }
-
-    .add-link { margin-top: 0.75rem; display: block; }
+    .add-link:hover { text-decoration: underline; }
 
     /* Edit / add forms */
     .section-edit-area,

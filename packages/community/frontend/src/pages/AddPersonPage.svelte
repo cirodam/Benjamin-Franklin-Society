@@ -31,7 +31,7 @@
         loading = true;
         try {
             const m = await createMotion({
-                body:        "referendum",
+                authorityId: "membership",
                 title:       `Add ${firstName.trim()} ${lastName.trim()} to the community`,
                 description: `Petition to add ${firstName.trim()} ${lastName.trim()} as a community member.`,
                 kind:        "add-person",

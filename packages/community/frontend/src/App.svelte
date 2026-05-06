@@ -8,6 +8,7 @@
     import ConstitutionPage from "./pages/ConstitutionPage.svelte";
     import DocumentsPage   from "./pages/DocumentsPage.svelte";
     import BylawPage       from "./pages/BylawPage.svelte";
+    import SectionPage     from "./pages/SectionPage.svelte";
     import SettingsPage        from "./pages/SettingsPage.svelte";
     import CentralBankPage     from "./pages/CentralBankPage.svelte";
     import SocialInsurancePage from "./pages/SocialInsurancePage.svelte";
@@ -18,13 +19,14 @@
 import AssemblyPage      from "./pages/AssemblyPage.svelte";
 import PoolPage          from "./pages/PoolPage.svelte";
 import MotionPage        from "./pages/MotionPage.svelte";
-    import CharterPage         from "./pages/HowItWorksPage.svelte";
+    import CharterPage         from "./pages/CharterPage.svelte";
     import BudgetPage          from "./pages/BudgetPage.svelte";
     import AssociationsPage    from "./pages/AssociationsPage.svelte";
     import AssociationPage     from "./pages/AssociationPage.svelte";
     import AddPersonPage       from "./pages/AddPersonPage.svelte";
     import LocationsPage       from "./pages/LocationsPage.svelte";
     import ProposalsPage       from "./pages/ProposalsPage.svelte";
+    import ProposePage         from "./pages/ProposePage.svelte";
     import ApplyPage           from "./pages/ApplyPage.svelte";
     import NodesPage           from "./pages/NodesPage.svelte";
     import VacanciesPage       from "./pages/VacanciesPage.svelte";
@@ -103,6 +105,8 @@ import MotionPage        from "./pages/MotionPage.svelte";
             <DocumentsPage />
         {:else if $currentPage === "bylaw"}
             <BylawPage />
+        {:else if $currentPage === "section"}
+            <SectionPage />
         {:else if $currentPage === "settings"}
             <SettingsPage />
         {:else if $currentPage === "domains"}
@@ -119,7 +123,7 @@ import MotionPage        from "./pages/MotionPage.svelte";
             <PoolPage />
         {:else if $currentPage === "motion"}
             <MotionPage />
-        {:else if $currentPage === "how-it-works"}
+        {:else if $currentPage === "charter"}
             <CharterPage />
         {:else if $currentPage === "budget"}
             <BudgetPage />
@@ -133,6 +137,8 @@ import MotionPage        from "./pages/MotionPage.svelte";
             <LocationsPage />
         {:else if $currentPage === "proposals"}
             <ProposalsPage />
+        {:else if $currentPage === "propose"}
+            <ProposePage />
         {:else if $currentPage === "nodes"}
             <NodesPage />
         {:else if $currentPage === "central-bank"}

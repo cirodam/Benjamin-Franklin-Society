@@ -12,6 +12,8 @@ import { UnitTypeLoader } from "./common/domain/UnitTypeLoader.js";
 import { UnitTemplateRegistry } from "./common/domain/UnitTemplateRegistry.js";
 import { LeaderPool } from "./governance/LeaderPool.js";
 import { LeaderPoolLoader } from "./governance/LeaderPoolLoader.js";
+import { AuthorityLoader } from "./governance/AuthorityLoader.js";
+import { poolAuthorityId } from "./governance/Authority.js";
 import { BankClient } from "@ecf/core";
 import { PersonService } from "./person/PersonService.js";
 
@@ -384,10 +386,25 @@ export class DomainService {
         this.assertInit();
         this.pools.set(pool.id, pool);
         this.poolLoader?.save(pool);
+        AuthorityLoader.getInstance().save({
+            id:                poolAuthorityId(pool.id),
+            name:              pool.name,
+            type:              "pool",
+            poolId:            pool.id,
+            defaultVoteRuleId: "assembly-general",
+        });
     }
 
     savePool(pool: LeaderPool): void {
         this.poolLoader?.save(pool);
+        // Propagate name changes to the companion authority
+        AuthorityLoader.getInstance().save({
+            id:                poolAuthorityId(pool.id),
+            name:              pool.name,
+            type:              "pool",
+            poolId:            pool.id,
+            defaultVoteRuleId: "assembly-general",
+        });
     }
 
     deletePool(id: string): boolean {
@@ -395,6 +412,7 @@ export class DomainService {
         if (!this.pools.has(id)) return false;
         this.pools.delete(id);
         this.poolLoader?.delete(id);
+        AuthorityLoader.getInstance().delete(poolAuthorityId(id));
         // Clear poolId on any domain referencing this pool
         for (const domain of this.domains.values()) {
             if (domain.poolId === id) {

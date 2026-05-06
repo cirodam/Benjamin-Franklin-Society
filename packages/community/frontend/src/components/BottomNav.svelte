@@ -18,8 +18,9 @@
         },
         {
             kind: "group", id: "governance", label: "Governance", icon: "⚖",
-            activePages: ["leadership", "assembly", "pool", "budget", "proposals", "domains", "domain", "unit", "constitution", "documents", "bylaw"],
+            activePages: ["leadership", "assembly", "pool", "budget", "proposals", "propose", "domains", "domain", "unit", "constitution", "documents", "bylaw", "section"],
             children: [
+                { kind: "leaf", id: "propose",      label: "Propose",      icon: "⊕" },
                 { kind: "leaf", id: "leadership",   label: "Leadership",   icon: "★" },
                 { kind: "leaf", id: "budget",        label: "Budget",       icon: "⊡" },
                 { kind: "leaf", id: "domains",       label: "Institutions", icon: "⊛" },
@@ -44,7 +45,7 @@
         },
         {
             kind: "group", id: "other", label: "Other", icon: "⊙",
-            activePages: ["locations", "nodes", "connections", "how-it-works", "settings", "timeline", "registry", "calendar"],
+            activePages: ["locations", "nodes", "connections", "settings", "timeline", "registry", "calendar"],
             children: [
                 { kind: "leaf", id: "calendar",     label: "Events",        icon: "◷" },
                 { kind: "leaf", id: "timeline",     label: "Timeline",      icon: "◷" },
@@ -52,7 +53,6 @@
                 { kind: "leaf", id: "nodes",        label: "Nodes",         icon: "⬡" },
                 { kind: "leaf", id: "connections",  label: "Connections",   icon: "⬡" },
                 { kind: "leaf", id: "registry",     label: "Type Registry", icon: "⊟" },
-                { kind: "leaf", id: "how-it-works", label: "Our Charter",   icon: "⊜" },
                 { kind: "leaf", id: "settings",     label: "Settings",      icon: "⚙" },
             ],
         },
@@ -76,7 +76,7 @@
         if (item.id === "domains")      return ["domains", "domain", "unit"].includes($currentPage);
         if (item.id === "associations") return ["associations", "association"].includes($currentPage);
         if (item.id === "leadership")   return ["leadership", "assembly", "pool"].includes($currentPage);
-        if (item.id === "documents")    return ["documents", "constitution", "bylaw"].includes($currentPage);
+        if (item.id === "documents")    return ["documents", "constitution", "bylaw", "section"].includes($currentPage);
         return $currentPage === item.id;
     }
 

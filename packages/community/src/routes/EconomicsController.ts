@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { CentralBank } from "../domains/central_bank/CentralBank.js";
 import { SocialInsuranceBank } from "../domains/social_insurance/SocialInsuranceBank.js";
-import { Constitution } from "../governance/Constitution.js";
+import { ConstitutionLoader } from "../governance/ConstitutionLoader.js";
 import { PersonService } from "../person/PersonService.js";
 import { nodeBankClient as bankClient } from "../nodeBankClient.js";
 import { HealthcareDomain } from "../domains/healthcare/HealthcareDomain.js";
@@ -25,7 +25,7 @@ export async function getEconomics(_req: Request, res: Response): Promise<void> 
         si.isReady() ? bank.getAccountById(si.poolAccountId) : Promise.resolve(null),
     ]);
 
-    const constitution = Constitution.getInstance();
+    const constitution = ConstitutionLoader.getInstance();
     const persons      = PersonService.getInstance().getAll();
     const now          = new Date();
     const workingMin   = constitution.workingAgeMin;

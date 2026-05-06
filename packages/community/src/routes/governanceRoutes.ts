@@ -1,15 +1,16 @@
 import { Router, Request, Response } from "express";
 import { requireAuth, requireSteward } from "./middleware.js";
 import * as motions   from "./MotionController.js";
-import { Constitution } from "../governance/Constitution.js";
-import { BylawLoader } from "../governance/BylawLoader.js";
+import { ConstitutionLoader } from "../governance/ConstitutionLoader.js";
+import { DocumentLoader } from "../governance/DocumentLoader.js";
 import { CommunityDb } from "../CommunityDb.js";
 import { PersonService } from "../person/PersonService.js";
 import { CommunityLogService } from "../log/CommunityLogService.js";
 
 const router = Router();
-const bylaws = new BylawLoader();
+const bylaws = new DocumentLoader();
 
+router.get(   "/authorities",                motions.listAuthorities);
 router.get(   "/motions/vote-rules",          motions.listVoteRulesList);
 router.get(   "/motions/effects",            motions.listEffects);
 router.get(   "/motions",                    motions.listMotions);
@@ -34,7 +35,7 @@ router.patch("/constitution/parameters/:key", requireSteward, (req: Request, res
         res.status(400).json({ error: "value must be a number or boolean" }); return;
     }
     try {
-        const con = Constitution.getInstance();
+        const con = ConstitutionLoader.getInstance();
         con.amend(key, value, "steward-override");
         con.save();
         res.json({ key, value: con.get(key) });
@@ -53,16 +54,33 @@ router.patch("/constitution/sections/:sectionId", requireSteward, (req: Request,
         res.status(400).json({ error: "body is required and must be a non-empty string" }); return;
     }
     try {
-        const con = Constitution.getInstance();
+        const con = ConstitutionLoader.getInstance();
         con.updateSection(sectionId, body.trim());
         con.save();
-        res.json(con.toDocument());
+        res.json({ doc: con.getDoc(), meta: con.getMeta() });
     } catch (err) {
         res.status(400).json({ error: (err as Error).message });
     }
 });
 
+// GET /api/charter
+// Returns the charter document (read-only; always id="charter").
+router.get("/charter", (_req: Request, res: Response) => {
+    const charter = bylaws.load("charter");
+    if (!charter) { res.status(404).json({ error: "Charter not found" }); return; }
+    res.json(charter);
+});
+
 // ── Bylaws ────────────────────────────────────────────────────────────────────
+
+// The charter is immutable from within the community — reject any write attempt.
+function rejectCharter(req: Request, res: Response, next: () => void): void {
+    if (req.params.id === "charter") {
+        res.status(403).json({ error: "The charter is maintained by the network and cannot be modified here." });
+        return;
+    }
+    next();
+}
 
 router.get("/bylaws", (_req: Request, res: Response) => {
     res.json(bylaws.loadAll());
@@ -75,16 +93,16 @@ router.get("/bylaws/:id", (req: Request, res: Response) => {
 });
 
 router.post("/bylaws", requireSteward, (req: Request, res: Response) => {
-    const { title, preamble } = (req.body ?? {}) as { title?: string; preamble?: string };
+    const { title, preamble, authorityId, voteRuleId } = (req.body ?? {}) as { title?: string; preamble?: string; authorityId?: string; voteRuleId?: string };
     if (!title?.trim()) { res.status(400).json({ error: "title is required" }); return; }
     try {
-        res.status(201).json(bylaws.create(title, preamble));
+        res.status(201).json(bylaws.create(title, preamble, authorityId, null, undefined, voteRuleId));
     } catch (err) {
         res.status(400).json({ error: (err as Error).message });
     }
 });
 
-router.post("/bylaws/:id/articles", requireSteward, (req: Request, res: Response) => {
+router.post("/bylaws/:id/articles", requireSteward, rejectCharter, (req: Request, res: Response) => {
     const { number, title, preamble } = (req.body ?? {}) as { number?: string; title?: string; preamble?: string };
     if (!number?.trim() || !title?.trim()) { res.status(400).json({ error: "number and title are required" }); return; }
     try {
@@ -95,18 +113,18 @@ router.post("/bylaws/:id/articles", requireSteward, (req: Request, res: Response
     }
 });
 
-router.post("/bylaws/:id/articles/:number/sections", requireSteward, (req: Request, res: Response) => {
-    const { sectionId, title, body } = (req.body ?? {}) as { sectionId?: string; title?: string; body?: string };
+router.post("/bylaws/:id/articles/:number/sections", requireSteward, rejectCharter, (req: Request, res: Response) => {
+    const { sectionId, title, body, rationale, sunsetAt, voteRuleId } = (req.body ?? {}) as { sectionId?: string; title?: string; body?: string; rationale?: string; sunsetAt?: string | null; voteRuleId?: string | null };
     if (!sectionId?.trim() || !body?.trim()) { res.status(400).json({ error: "sectionId and body are required" }); return; }
     try {
-        res.status(201).json(bylaws.addSection(req.params.id as string, req.params.number as string, sectionId, title ?? "", body));
+        res.status(201).json(bylaws.addSection(req.params.id as string, req.params.number as string, sectionId, title ?? "", body, { rationale, sunsetAt, voteRuleId }));
     } catch (err) {
         const msg = (err as Error).message;
         res.status(msg.includes("not found") ? 404 : 409).json({ error: msg });
     }
 });
 
-router.patch("/bylaws/:id/sections/:sectionId", requireSteward, (req: Request, res: Response) => {
+router.patch("/bylaws/:id/sections/:sectionId", requireSteward, rejectCharter, (req: Request, res: Response) => {
     const { body } = (req.body ?? {}) as { body?: string };
     if (!body?.trim()) { res.status(400).json({ error: "body is required" }); return; }
     try {
@@ -117,7 +135,7 @@ router.patch("/bylaws/:id/sections/:sectionId", requireSteward, (req: Request, r
     }
 });
 
-router.delete("/bylaws/:id", requireSteward, (req: Request, res: Response) => {
+router.delete("/bylaws/:id", requireSteward, rejectCharter, (req: Request, res: Response) => {
     if (!bylaws.load(req.params.id as string)) { res.status(404).json({ error: "Bylaw not found" }); return; }
     bylaws.delete(req.params.id as string);
     res.status(204).end();
@@ -145,7 +163,7 @@ function saveTerm(term: AssemblyTermRecord): void {
 }
 
 function computeSeats(population: number): number {
-    const fraction = Constitution.getInstance().assemblyFraction;
+    const fraction = ConstitutionLoader.getInstance().assemblyFraction;
     return Math.max(9, Math.ceil(population * fraction));
 }
 
@@ -158,7 +176,7 @@ router.get("/assembly", (_req: Request, res: Response) => {
     const persons = PersonService.getInstance().getAll().filter(p => !p.disabled);
     const seats   = computeSeats(persons.length);
     const term    = loadTerm();
-    const constitution = Constitution.getInstance();
+    const constitution = ConstitutionLoader.getInstance();
 
     const seatedPersons = term
         ? term.memberIds
@@ -187,7 +205,7 @@ router.get("/assembly", (_req: Request, res: Response) => {
 // Randomly draws a new assembly term from eligible (non-disabled, adult) members.
 router.post("/assembly/draw", requireSteward, (req: Request, res: Response) => {
     const { termStartDate } = (req.body ?? {}) as { termStartDate?: string };
-    const constitution = Constitution.getInstance();
+    const constitution = ConstitutionLoader.getInstance();
     // Default to the constitution's canonical term start date for the current cycle
     const startDate = termStartDate ?? constitution.currentTermWindow().start.toISOString().slice(0, 10);
     if (isNaN(new Date(startDate).getTime())) {

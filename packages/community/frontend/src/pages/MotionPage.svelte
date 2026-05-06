@@ -4,8 +4,9 @@
         submitMotionForDeliberation, openMotionVoting,
         markMotionDiscussed, recordMotionOutcome, withdrawMotion,
     } from "../lib/api.js";
-    import type { MotionDto, MotionOutcome, CommentKind } from "../lib/api.js";
+    import type { MotionDto, MotionOutcome, CommentKind, AuthorityDto } from "../lib/api.js";
     import { session, currentPage, selectedMotionId } from "../lib/session.js";
+    import AuthorityBadge from "../components/AuthorityBadge.svelte";
 
     const RULE_LABELS: Record<string, string> = {
         "referendum-constitutional": "Constitutional Referendum — requires 2/3 of all members",
@@ -55,8 +56,7 @@
 
     const me = $derived($session?.handle ?? null);
     const isSteward = $derived(($session as any)?.isSteward ?? false);
-    const isReferendum = $derived(motion?.body === "referendum");
-    const isClerk      = $derived(motion !== null && !isReferendum);
+    const isMembership = $derived(motion?.authorityId === "membership");
 
     const myVote = $derived(
         motion ? motion.votes.find(v => v.handle === me) ?? null : null
@@ -76,9 +76,9 @@
     $effect(() => { load(); });
 
     function back() {
-        if (isReferendum) currentPage.go("proposals");
-        else if (motion?.body === "assembly") currentPage.go("assembly");
-        else currentPage.go("pool");
+        if (motion?.authorityId === "assembly") currentPage.go("assembly");
+        else if (motion?.authorityId?.startsWith("pool:")) currentPage.go("pool");
+        else currentPage.go("proposals");
     }
 
     async function doVote(vote: "approve" | "reject" | "abstain") {
@@ -180,6 +180,7 @@
         <!-- Meta row -->
         <div class="meta-row">
             <span>Proposed by <strong>{motion.proposerHandle}</strong></span>
+            <AuthorityBadge authorityId={motion.authorityId} />
             <span>{formatDate(motion.createdAt)}</span>
         </div>
 
@@ -219,8 +220,8 @@
             </div>
         {/if}
 
-        <!-- Vote summary (referendum) -->
-        {#if isReferendum && (motion.stage === "voting" || motion.stage === "resolved")}
+        <!-- Vote summary -->
+        {#if (motion.stage === "voting" || motion.stage === "resolved")}
             <div class="vote-summary">
                 {#if motion.voteRuleId === "petition" && motion.minApprovals}
                     {@const pct = Math.min(100, Math.round(motion.approvalCount / motion.minApprovals * 100))}
@@ -248,8 +249,8 @@
             </div>
         {/if}
 
-        <!-- Referendum voting actions -->
-        {#if isReferendum && motion.stage === "voting" && me && !myVote}
+        <!-- Voting actions -->
+        {#if motion.stage === "voting" && me && !myVote}
             <div class="vote-actions">
                 <button class="btn-approve" onclick={() => doVote("approve")}>Approve</button>
                 <button class="btn-reject"  onclick={() => doVote("reject")}>Reject</button>
@@ -259,13 +260,13 @@
             <p class="my-vote">You voted: <strong>{myVote.vote}</strong></p>
         {/if}
 
-        <!-- Referendum steward actions: open voting -->
-        {#if isReferendum && motion.stage === "deliberating" && isSteward}
+        <!-- Steward action: open voting -->
+        {#if motion.stage === "deliberating" && isSteward}
             <button class="btn-action" onclick={doOpenVoting}>Open voting now</button>
         {/if}
 
-        <!-- Clerk actions (assembly / pool) -->
-        {#if isClerk && isSteward && motion.stage !== "resolved"}
+        <!-- Steward override actions -->
+        {#if !isMembership && isSteward && motion.stage !== "resolved"}
             <div class="clerk-actions">
                 {#if motion.stage === "proposed"}
                     <button class="btn-action" onclick={doMarkDiscussed}>Mark as discussed</button>
@@ -358,7 +359,7 @@
         {/if}
 
         <!-- Vote list (collapsed / expandable could be added; showing flat for now) -->
-        {#if isReferendum && motion.votes.length > 0}
+        {#if motion.votes.length > 0}
             <details class="votes-detail">
                 <summary>Votes ({motion.votes.length})</summary>
                 {#each motion.votes as v (v.handle)}

@@ -73,7 +73,7 @@ export const session = createSessionStore();
 /** Set to true when any API call returns 401, so the login page can explain why. */
 export const sessionExpired = writable(false);
 
-export type Page = "dashboard" | "directory" | "constitution" | "settings" | "domains" | "domain" | "unit" | "leadership" | "assembly" | "pool" | "motion" | "applications" | "how-it-works" | "budget" | "associations" | "association" | "add-person" | "locations" | "proposals" | "proposal" | "nodes" | "central-bank" | "social-insurance" | "vacancies" | "vacancy-detail" | "nominations" | "connections" | "schedule" | "documents" | "bylaw" | "timeline" | "calendar" | "registry" | "role-type" | "unit-type-detail";
+export type Page = "dashboard" | "directory" | "constitution" | "settings" | "domains" | "domain" | "unit" | "leadership" | "assembly" | "pool" | "motion" | "applications" | "charter" | "budget" | "associations" | "association" | "add-person" | "locations" | "proposals" | "proposal" | "nodes" | "central-bank" | "social-insurance" | "vacancies" | "vacancy-detail" | "nominations" | "connections" | "schedule" | "documents" | "bylaw" | "section" | "timeline" | "calendar" | "registry" | "role-type" | "unit-type-detail" | "propose";
 
 function createPageStore() {
     const { subscribe, set } = writable<Page>("dashboard");
@@ -102,6 +102,19 @@ export const selectedMotionId = writable<string | null>(null);
 
 /** ID of the bylaw currently being viewed in the bylaw detail page. */
 export const selectedBylawId = writable<string | null>(null);
+
+/** Context for the section detail page. */
+export interface SectionContext {
+    /** "constitution" or the bylaw id */
+    docId: string;
+    /** human-readable document title */
+    docTitle: string;
+    /** the parent page to go back to */
+    backPage: Page;
+    sectionId: string;
+}
+
+export const selectedSection = writable<SectionContext | null>(null);
 
 /** ID of the role type currently being viewed in the role type detail page. */
 export const selectedRoleTypeId = writable<string | null>(null);

@@ -1,8 +1,6 @@
-import { type DocumentArticle, extractParamKeys } from "../common/DocumentFramework.js";
+import { type DocumentArticle } from "../common/DocumentFramework.js";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-
-export type ParameterAuthority = "immutable" | "referendum" | "assembly" | "council" | "commonwealth";
 
 export type GovernanceBody = "council" | "assembly" | "referendum";
 
@@ -23,7 +21,8 @@ export interface ActionAuthority {
 
 export interface ConstitutionalParameter<T extends number | boolean> {
     readonly value:        T;
-    readonly authority:    ParameterAuthority;
+    /** true = unit definition or fundamental guarantee; cannot be amended by any vote. */
+    readonly immutable:    boolean;
     readonly description:  string;
     readonly constraints?: { min?: number; max?: number };
 }
@@ -37,26 +36,22 @@ export interface ConstitutionAmendment {
     readonly amendedAt:  string; // ISO 8601
 }
 
-export interface ConstitutionDocument {
+/** Constitution-specific metadata: parameters, voting authority map, community identity. */
+export interface ConstitutionMetadata {
+    documentId:      string;
     version:         number;
-    adoptedAt:       string;
     communityName:   string;
-    /** URL-safe handle used to identify this community within a federation.
-     *  Lowercase letters, digits, and hyphens only. Must be set before applying
-     *  to join a federation. Unique within a given federation. */
+    /** URL-safe handle used to identify this community within a federation. */
     communityHandle: string;
     parameters:      Record<string, ConstitutionalParameter<number | boolean>>;
     amendments:      ConstitutionAmendment[];
     authorityMap:    ActionAuthority[];
-    /** Structured document body: articles containing sections with {paramKey} prose slots. */
-    articles:        DocumentArticle[];
 }
 
 // ── Defaults ──────────────────────────────────────────────────────────────────
 
-export const DEFAULT_CONSTITUTION: ConstitutionDocument = {
+export const DEFAULT_CONSTITUTION_META: Omit<ConstitutionMetadata, "documentId"> = {
     version:       1,
-    adoptedAt:     new Date().toISOString(),
     communityName:   "My Community",
     communityHandle: "",
     parameters: {
@@ -64,7 +59,7 @@ export const DEFAULT_CONSTITUTION: ConstitutionDocument = {
         // ── Axioms — unit definitions, never changeable ──────────────────────
         kinPerPersonYear: {
             value: 10_000,
-            authority: "immutable",
+            immutable: true,
             description:
                 "Kin issued per person-year of presence. This is a unit definition — 1 kin = 1/10,000 person-year — not a policy choice. All human years are valued equally.",
         },
@@ -72,44 +67,44 @@ export const DEFAULT_CONSTITUTION: ConstitutionDocument = {
         // ── Fundamental guarantees ───────────────────────────────────────────
         universalFloorGuaranteed: {
             value: true,
-            authority: "immutable",
+            immutable: true,
             description: "Every member receives basic needs support unconditionally.",
         },
         membershipUnconditional: {
             value: true,
-            authority: "immutable",
+            immutable: true,
             description: "Belonging is not contingent on productive capacity.",
         },
         dataPortabilityGuaranteed: {
             value: true,
-            authority: "immutable",
+            immutable: true,
             description: "Members can always take their data and leave.",
         },
         ledgerTransparent: {
             value: true,
-            authority: "immutable",
+            immutable: true,
             description: "All kin flows are visible to all members.",
         },
         democraticMinimumProtected: {
             value: true,
-            authority: "immutable",
+            immutable: true,
             description: "Governance cannot be captured by any individual or group.",
         },
         dueProcessGuaranteed: {
             value: true,
-            authority: "immutable",
+            immutable: true,
             description:
                 "No member may have their membership suspended, revoked, or materially restricted without notice, a stated reason, and an opportunity to respond before the decision takes effect.",
         },
         noExPostFacto: {
             value: true,
-            authority: "immutable",
+            immutable: true,
             description:
                 "No rule change may be applied retroactively to penalise conduct that was permitted at the time it occurred.",
         },
         rightOfAppeal: {
             value: true,
-            authority: "immutable",
+            immutable: true,
             description:
                 "Any member subject to an adverse governance decision has the right to appeal it to an independent body before it takes permanent effect.",
         },
@@ -117,19 +112,19 @@ export const DEFAULT_CONSTITUTION: ConstitutionDocument = {
         // ── Vote thresholds ──────────────────────────────────────────────────
         thresholdSimpleMajority: {
             value: 0.51,
-            authority: "referendum",
+            immutable: false,
             description: "Fraction of total members required to pass a simple majority proposal.",
             constraints: { min: 0.51, max: 0.66 },
         },
         thresholdSupermajority: {
             value: 0.67,
-            authority: "referendum",
+            immutable: false,
             description: "Fraction of total members required to pass a supermajority proposal.",
             constraints: { min: 0.60, max: 0.80 },
         },
         thresholdNearConsensus: {
             value: 0.90,
-            authority: "referendum",
+            immutable: false,
             description: "Fraction of total members required to pass a near-consensus proposal.",
             constraints: { min: 0.80, max: 1.00 },
         },
@@ -137,37 +132,37 @@ export const DEFAULT_CONSTITUTION: ConstitutionDocument = {
         // ── Governance process ───────────────────────────────────────────────
         assemblySeatCount: {
             value: 99,
-            authority: "assembly",
+            immutable: false,
             description: "Number of members drawn by sortition to form the assembly for a given term.",
             constraints: { min: 9, max: 999 },
         },
         assemblyFraction: {
             value: 0.03,
-            authority: "assembly",
+            immutable: false,
             description: "Fraction of the population that forms the assembly. The seat count is max(9, ceil(population × assemblyFraction)).",
             constraints: { min: 0.01, max: 0.20 },
         },
         assemblyTermMonths: {
             value: 12,
-            authority: "assembly",
+            immutable: false,
             description: "Duration of an assembly term in months.",
             constraints: { min: 1, max: 24 },
         },
         assemblyTermStartMonth: {
             value: 6,
-            authority: "assembly",
+            immutable: false,
             description: "Calendar month (1–12) on which a new assembly term begins each cycle. Combined with assemblyTermStartDay to define the canonical term anchor date.",
             constraints: { min: 1, max: 12 },
         },
         assemblyTermStartDay: {
             value: 2,
-            authority: "assembly",
+            immutable: false,
             description: "Day of the month on which a new assembly term begins each cycle. Combined with assemblyTermStartMonth to define the canonical term anchor date.",
             constraints: { min: 1, max: 31 },
         },
         deliberationPeriodDays: {
             value: 3,
-            authority: "assembly",
+            immutable: false,
             description: "Minimum days before a proposal vote can close.",
             constraints: { min: 1, max: 30 },
         },
@@ -175,14 +170,14 @@ export const DEFAULT_CONSTITUTION: ConstitutionDocument = {
         // ── Monetary policy ──────────────────────────────────────────────────
         bankDemurrageRate: {
             value: 0.02,
-            authority: "referendum",
+            immutable: false,
             description:
                 "Monthly rate at which the Central Bank applies demurrage to recover unanchored kin.",
             constraints: { min: 0, max: 0.10 },
         },
         demurrageFloor: {
             value: 1_000,
-            authority: "referendum",
+            immutable: false,
             description:
                 "Balance floor below which no demurrage is charged. Only the portion of an account balance above this threshold is subject to dues or bank demurrage. Protects small balances from being eroded.",
             constraints: { min: 0, max: 5_000 },
@@ -191,7 +186,7 @@ export const DEFAULT_CONSTITUTION: ConstitutionDocument = {
         // ── Community dues ───────────────────────────────────────────────────
         communityDuesRate: {
             value: 0.01,
-            authority: "referendum",
+            immutable: false,
             description:
                 "Monthly rate collected from every member's primary account into the community treasury as community dues — kin is not retired, it moves from members to the shared budget. Applied after Central Bank demurrage.",
             constraints: { min: 0, max: 0.10 },
@@ -200,35 +195,35 @@ export const DEFAULT_CONSTITUTION: ConstitutionDocument = {
         // ── Social insurance ─────────────────────────────────────────────────
         workingAgeMin: {
             value: 16,
-            authority: "referendum",
+            immutable: false,
             description:
                 "Minimum age at which a community member is considered part of the working-age population. Used for demographic reporting and role eligibility.",
             constraints: { min: 14, max: 21 },
         },
         retirementAge: {
             value: 65,
-            authority: "referendum",
+            immutable: false,
             description:
                 "Age at which a member becomes eligible for monthly retirement payments from the social insurance pool.",
             constraints: { min: 55, max: 75 },
         },
         retirementPayoutRate: {
             value: 500,
-            authority: "referendum",
+            immutable: false,
             description:
                 "Flat kin amount paid to each eligible retiree per month from the social insurance pool. Capped by available pool balance.",
             constraints: { min: 0, max: 100_000 },
         },
         birthdayCirculationFraction: {
             value: 0.20,
-            authority: "referendum",
+            immutable: false,
             description:
                 "Fraction of each annual person-year issuance (kinPerPersonYear) paid directly to the member's primary account as circulating kin. The remainder goes to the social insurance retirement pool.",
             constraints: { min: 0, max: 0.5 },
         },
         endowmentPoolFraction: {
             value: 0.80,
-            authority: "referendum",
+            immutable: false,
             description:
                 "Fraction of a new member's join endowment (age × kinPerPersonYear) directed into the social insurance retirement pool. The remaining fraction goes to the community treasury.",
             constraints: { min: 0.50, max: 0.95 },
@@ -237,7 +232,7 @@ export const DEFAULT_CONSTITUTION: ConstitutionDocument = {
         // ── Membership admission ─────────────────────────────────────────────
         memberAdmissionVouchesRequired: {
             value: 3,
-            authority: "assembly",
+            immutable: false,
             description:
                 "Number of existing member vouches required to automatically admit a membership applicant. Once this many distinct members vouch for an application it is admitted without further action.",
             constraints: { min: 1, max: 10 },
@@ -246,14 +241,13 @@ export const DEFAULT_CONSTITUTION: ConstitutionDocument = {
         // ── Stewardship ──────────────────────────────────────────────────────
         stewardshipThresholdYears: {
             value: 3,
-            authority: "assembly",
+            immutable: false,
             description:
                 "Years of continuous membership after which a person automatically becomes a steward, gaining access to administrative actions (password resets, disabling members, etc.). Stewardship can also be granted explicitly by an existing steward at any time.",
             constraints: { min: 1, max: 20 },
         },
     },
     amendments: [],
-    articles: [],   // populated below after DEFAULT_ARTICLES is declared
     authorityMap: [
         // Membership
         { action: "admit-member",             body: "assembly",   voteRuleId: "petition",                  description: "Admitting a new member — requires a petition reaching the signature threshold" },
@@ -279,7 +273,7 @@ export const DEFAULT_CONSTITUTION: ConstitutionDocument = {
 
 // ── Default Articles ─────────────────────────────────────────────────────────
 
-const DEFAULT_ARTICLES: DocumentArticle[] = [
+export const DEFAULT_ARTICLES: DocumentArticle[] = [
     {
         number: "I",
         title: "Founding Principles",
@@ -289,28 +283,28 @@ const DEFAULT_ARTICLES: DocumentArticle[] = [
                 title: "Why We Are Here",
                 body: "Most of us grew up believing that if we worked hard and played by the rules, our basic needs would be met. For a great many people, that has not proven true. Work no longer guarantees security. Housing costs more than families can afford. Healthcare goes without because the price is too high. Neighbors who need help find that the systems meant to provide it are distant, difficult, and insufficient. These are not personal failures — they are shared experiences, felt across communities of every background. We are not the first to notice, and we are not naive about the difficulty of change. But we believe that people who choose to meet their needs together, in full view of one another, can do better than institutions that have forgotten who they were built to serve. This community is that attempt.",
                 paramKeys: [],
-                amendAuthority: "referendum",
+                rationale: "This section names the problem the community exists to address. It is here so that future members know the founding motivation, and so that any proposal that would move the community away from that purpose is recognizable as a departure from its reason for being.",
             },
             {
                 id: "I.2",
                 title: "Human Dignity",
                 body: "Every person has worth that is not contingent on their productivity, their health, their age, or any other measure of economic usefulness. A person who cannot work has the same claim on a dignified life as anyone else. A community that withholds basic necessities from people who fail to contribute economically has not balanced its books — it has betrayed its purpose. This community holds human dignity as prior to economic participation. No member's standing within it is earned. It is given.",
                 paramKeys: [],
-                amendAuthority: "referendum",
+                rationale: "Most institutional failures come down to treating people as inputs rather than ends. This section makes explicit that the community rejects that framing — belonging is not conditional on productivity. It is the philosophical foundation for the universal floor guarantee and unconditional membership provisions elsewhere in the constitution.",
             },
             {
                 id: "I.3",
                 title: "Economy in Service of People",
                 body: "An economy is a tool for coordinating how people meet their needs. An economy that denies cancer treatment to keep a claims ratio low, that leaves veterans on the street, that will not feed children despite producing enough food to waste half of it — that economy has not merely developed flaws. It has failed at its only legitimate purpose. The economy of this community exists to meet the needs of its members. That is the measure by which every economic decision here will be judged.",
                 paramKeys: [],
-                amendAuthority: "referendum",
+                rationale: "This section provides the evaluative criterion for economic decisions: does it meet members' needs? It is here to prevent the community's economic structures from becoming ends in themselves — the ledger must serve people, not the other way around. It is also a check on proposals that optimize for efficiency or growth at the expense of care.",
             },
             {
                 id: "I.4",
                 title: "Scope",
                 body: "This constitution governs the internal affairs of this community. It does not claim authority over any person who has not chosen membership, and it does not override any rights a member holds as a person beyond this community. It is not a complete theory of society — it is an agreement among people who have chosen to meet their needs together.",
                 paramKeys: [],
-                amendAuthority: "referendum",
+                rationale: "A community constitution can only bind those who have consented to it. This section sets that boundary clearly, to prevent mission creep and to make plain that membership is voluntary. It also protects members: nothing in this document diminishes any right a person holds outside of it.",
             },
         ],
     },
@@ -323,30 +317,29 @@ const DEFAULT_ARTICLES: DocumentArticle[] = [
                 title: "The Source of Authority",
                 body: "Legitimate authority in this community comes from the whole community, not from the ability to win an election. No person or group holds permanent authority here. Every decision is made by the community, in whole or in part.",
                 paramKeys: [],
-                amendAuthority: "referendum",
+                rationale: "Elections concentrate authority in those who seek it. This section establishes the alternative: authority flows from the community as a whole and is delegated temporarily, never assigned permanently. It is the constitutional basis for sortition and the rejection of electoral politics within the community.",
             },
             {
                 id: "II.2",
                 title: "The Assembly",
                 body: "The assembly is the highest governing body of this community. It is composed of {assemblySeatCount} members drawn by sortition from the full membership for a fixed term. Any member may be drawn. The assembly sets policy, ratifies significant decisions, and holds all other bodies accountable. When its term ends, a new assembly is drawn.",
                 paramKeys: ["assemblySeatCount"],
-                amendAuthority: "referendum",
+                rationale: "A randomly drawn assembly represents the community as it actually is, not as those motivated to seek power would have it appear. The size is set large enough to be statistically representative while small enough to deliberate effectively. The fixed term prevents entrenchment.",
             },
             {
                 id: "II.3",
                 title: "Sortition",
                 body: "Leadership roles are filled by random draw from the relevant pool. The person selected serves for a fixed term, then returns to ordinary membership. A cooling-off period follows before they may serve in the same role again. This ensures that authority circulates through the community rather than accumulating in the hands of those who seek it most.",
                 paramKeys: [],
-                amendAuthority: "referendum",
+                rationale: "Sortition has a long history — Athenian democracy used it for most offices, on the theory that any competent citizen can serve and that elections are an aristocratic method. The cooling-off period prevents quasi-permanent leadership even within a random draw system. The result is that everyone governs and no one governs for long.",
             },
             {
                 id: "II.4",
                 title: "Leader Pools",
                 body: "Any member may join the pool of candidates for a leadership role by declaring their willingness to serve. No campaign, no election, no endorsement is required or permitted. The pool is simply the set of people who have said: I am willing.",
                 paramKeys: [],
-                amendAuthority: "referendum",
+                rationale: "The pool mechanism preserves one meaningful element of consent: a person must choose to be available for leadership. No one is conscripted. But beyond that declaration, no further qualification, advocacy, or endorsement is permitted — to prevent pool membership from becoming a de facto election.",
             },
-
         ],
     },
     {
@@ -358,239 +351,30 @@ const DEFAULT_ARTICLES: DocumentArticle[] = [
                 title: "The Kin",
                 body: "The unit of account for this community is the kin. It is grounded in the most basic thing all members share: the years of their lives. One kin represents one ten-thousandth of a person-year — 10,000 kin to a year.\n\nMost currencies are backed by government decree, by gold, or by debt. The kin is backed by something more direct: the community itself and the lives of the people in it.",
                 paramKeys: [],
-                amendAuthority: "referendum",
+                rationale: "Anchoring the currency to person-years rather than labor output or commodity prices means the money supply grows with the community itself and values all members equally regardless of what they produce. A retired member, a child, and a surgeon all contribute one person-year per year. The kin makes that equality legible in the ledger.",
             },
             {
                 id: "III.2",
                 title: "The Banks",
                 body: "This community operates two financial institutions. The Community Bank holds member accounts — it is where kin is stored, sent, and received. The Central Bank manages monetary policy — it issues new kin and applies the holding fee. All flows through both institutions are visible to every member. There are no hidden charges and no hidden balances.",
                 paramKeys: [],
-                amendAuthority: "referendum",
+                rationale: "Separating the retail bank (member accounts) from the central bank (monetary policy) mirrors standard institutional design and keeps the two functions from conflating. Full transparency — every transaction visible to every member — is the accountability mechanism that replaces the audit and regulatory apparatus external currencies rely on.",
             },
             {
                 id: "III.3",
                 title: "The Holding Fee",
                 body: "To discourage hoarding and keep kin moving through the community, the Central Bank applies a monthly holding fee of {bankDemurrageRate} to all account balances above {demurrageFloor} kin. Only the portion above this floor is subject to the fee. Balances at or below {demurrageFloor} kin are never charged.",
                 paramKeys: ["bankDemurrageRate", "demurrageFloor"],
-                amendAuthority: "referendum",
+                rationale: "Demurrage — a cost for holding currency idle — has a long history in complementary currency design, most notably Silvio Gesell's work and the Wörgl experiment of 1932. It discourages accumulation and encourages circulation, which is what a community currency is for. The floor protects small balances so the fee falls only on surplus, not on people meeting basic needs.",
             },
             {
                 id: "III.4",
                 title: "Community Dues",
                 body: "Each month, {communityDuesRate} of every member's primary balance above {demurrageFloor} kin is transferred to the community treasury as dues. This kin is not destroyed — it funds the shared budget we all depend on.",
                 paramKeys: ["communityDuesRate", "demurrageFloor"],
-                amendAuthority: "referendum",
+                rationale: "Dues are how the shared budget is funded. Unlike taxes in an external currency, kin dues do not leave the community — they move from member accounts to the treasury, which then spends them back into the community. The floor again protects small balances. The rate is a referendum parameter because the size of the common pool is a fundamental community choice.",
             },
         ],
     },
 ];
 
-DEFAULT_CONSTITUTION.articles = DEFAULT_ARTICLES;
-
-// ── Constitution singleton ────────────────────────────────────────────────────
-
-/** Minimal interface so Constitution doesn't depend on the loader class. */
-export interface ConstitutionSaver {
-    save(): void;
-}
-
-export class Constitution {
-    private static instance: Constitution;
-    private doc: ConstitutionDocument = {
-        ...DEFAULT_CONSTITUTION,
-        amendments:   [],
-        authorityMap: [...DEFAULT_CONSTITUTION.authorityMap],
-    };
-    private _saver: ConstitutionSaver | null = null;
-
-    private constructor() {}
-
-    static getInstance(): Constitution {
-        if (!Constitution.instance) Constitution.instance = new Constitution();
-        return Constitution.instance;
-    }
-
-    /** Register the loader so handlers can call save() without knowing DATA_DIR. */
-    init(saver: ConstitutionSaver): void {
-        this._saver = saver;
-    }
-
-    /** Persist the current document via the registered loader. */
-    save(): void {
-        if (!this._saver) throw new Error("Constitution.init() must be called before save()");
-        this._saver.save();
-    }
-
-    /**
-     * Load a persisted document. Parameters from the persisted document take
-     * precedence over defaults, but any parameters present in the defaults
-     * that are absent from the persisted document (i.e. added in a newer code
-     * version) are kept so the node doesn't crash on first boot after an upgrade.
-     */
-    load(doc: ConstitutionDocument): void {
-        this.doc = {
-            ...doc,
-            parameters: { ...this.doc.parameters, ...doc.parameters },
-            // Keep default articles when loading an older persisted doc that predates articles
-            articles: doc.articles?.length ? doc.articles : this.doc.articles,
-        };
-    }
-
-    /** Update the prose body of a section, re-extracting its paramKeys. */
-    updateSection(sectionId: string, body: string): void {
-        for (const article of this.doc.articles) {
-            const section = article.sections.find(s => s.id === sectionId);
-            if (section) {
-                section.body = body.trim();
-                section.paramKeys = extractParamKeys(body);
-                return;
-            }
-        }
-        throw new Error(`Section "${sectionId}" not found`);
-    }
-
-    get version(): number       { return this.doc.version; }
-    get adoptedAt(): string     { return this.doc.adoptedAt; }
-    get communityName(): string   { return this.doc.communityName ?? "Community"; }
-    get communityHandle(): string  { return this.doc.communityHandle ?? ""; }
-
-    setCommunityName(name: string): void {
-        this.doc = { ...this.doc, communityName: name };
-    }
-
-    /** Set the community's federation handle. Validated: lowercase alphanumeric + hyphens,
-     *  no leading/trailing hyphens, 2–32 characters. */
-    setCommunityHandle(handle: string): void {
-        const h = handle.toLowerCase().trim().replace(/_/g, "-");
-        if (!/^[a-z0-9][a-z0-9-]{0,30}[a-z0-9]$|^[a-z0-9]{1,2}$/.test(h)) {
-            throw new Error(
-                `Invalid community handle "${handle}". Use 2–32 characters: lowercase letters, digits, hyphens (no leading/trailing hyphens).`,
-            );
-        }
-        this.doc = { ...this.doc, communityHandle: h };
-    }
-
-    get amendments(): readonly ConstitutionAmendment[] { return this.doc.amendments; }
-
-    toDocument(): ConstitutionDocument { return this.doc; }
-
-    /** Read a parameter's current value. Throws if unknown. */
-    get<T extends number | boolean>(key: string): T {
-        const param = this.doc.parameters[key];
-        if (!param) throw new Error(`Unknown constitutional parameter: "${key}"`);
-        return param.value as T;
-    }
-
-    getParameter(key: string): ConstitutionalParameter<number | boolean> {
-        const param = this.doc.parameters[key];
-        if (!param) throw new Error(`Unknown constitutional parameter: "${key}"`);
-        return param;
-    }
-
-    getAll(): Record<string, ConstitutionalParameter<number | boolean>> {
-        return { ...this.doc.parameters };
-    }
-
-    /**
-     * Amend a mutable parameter. Called by GovernanceService after a proposal passes.
-     * Throws if the parameter is immutable or out of constraints.
-     */
-    amend(key: string, newValue: number | boolean, proposalId: string): void {
-        const param = this.doc.parameters[key];
-        if (!param) throw new Error(`Unknown constitutional parameter: "${key}"`);
-        if (param.authority === "immutable") {
-            throw new Error(`Parameter "${key}" is immutable — it is a unit definition, not a policy choice.`);
-        }
-        if (typeof newValue === "number" && param.constraints) {
-            const { min, max } = param.constraints;
-            if (min !== undefined && newValue < min)
-                throw new Error(`Value ${newValue} is below the minimum (${min}) for "${key}"`);
-            if (max !== undefined && newValue > max)
-                throw new Error(`Value ${newValue} exceeds the maximum (${max}) for "${key}"`);
-        }
-
-        const amendment: ConstitutionAmendment = {
-            version:   this.doc.version + 1,
-            parameter: key,
-            oldValue:  param.value,
-            newValue,
-            proposalId,
-            amendedAt: new Date().toISOString(),
-        };
-
-        (this.doc.parameters[key] as { value: number | boolean }).value = newValue;
-        this.doc.version = amendment.version;
-        this.doc.amendments.push(amendment);
-    }
-
-    // ── Convenience getters ──────────────────────────────────────────────────
-
-    get thresholds(): Record<VoteThreshold, number> {
-        return {
-            [VoteThreshold.SIMPLE_MAJORITY]: this.get<number>("thresholdSimpleMajority"),
-            [VoteThreshold.SUPERMAJORITY]:   this.get<number>("thresholdSupermajority"),
-            [VoteThreshold.NEAR_CONSENSUS]:  this.get<number>("thresholdNearConsensus"),
-        };
-    }
-
-    get deliberationPeriodDays(): number       { return this.get<number>("deliberationPeriodDays"); }
-    get assemblyFraction(): number             { return this.get<number>("assemblyFraction"); }
-    get assemblyTermMonths(): number           { return this.get<number>("assemblyTermMonths"); }
-    get assemblyTermStartMonth(): number       { return this.get<number>("assemblyTermStartMonth"); }
-    get assemblyTermStartDay(): number         { return this.get<number>("assemblyTermStartDay"); }
-
-    /**
-     * Computes the start and end dates of the active assembly term relative to `today`.
-     * The term anchor is the most recent occurrence of (assemblyTermStartMonth, assemblyTermStartDay)
-     * that is on or before `today`. The term ends `assemblyTermMonths` months after that anchor.
-     */
-    currentTermWindow(today: Date = new Date()): { start: Date; end: Date } {
-        const month  = this.assemblyTermStartMonth; // 1-based
-        const day    = this.assemblyTermStartDay;
-        const months = this.assemblyTermMonths;
-
-        // Try this calendar year's anchor first
-        let anchor = new Date(today.getFullYear(), month - 1, day);
-        if (anchor > today) {
-            // This year's anchor is in the future — use last year's
-            anchor = new Date(today.getFullYear() - 1, month - 1, day);
-        }
-
-        const end = new Date(anchor);
-        end.setMonth(end.getMonth() + months);
-
-        return { start: anchor, end };
-    }
-
-    /** ISO date string (YYYY-MM-DD) of the canonical next term start on or after `today`. */
-    nextTermStartDate(today: Date = new Date()): string {
-        const month = this.assemblyTermStartMonth;
-        const day   = this.assemblyTermStartDay;
-        let anchor  = new Date(today.getFullYear(), month - 1, day);
-        if (anchor < today) anchor = new Date(today.getFullYear() + 1, month - 1, day);
-        return anchor.toISOString().slice(0, 10);
-    }
-    get bankDemurrageRate(): number            { return this.get<number>("bankDemurrageRate"); }
-    get demurrageFloor(): number               { return this.get<number>("demurrageFloor"); }
-    get kinPerPersonYear(): number             { return this.get<number>("kinPerPersonYear"); }
-    get workingAgeMin(): number                { return this.get<number>("workingAgeMin"); }
-    get retirementAge(): number                { return this.get<number>("retirementAge"); }
-    get retirementPayoutRate(): number         { return this.get<number>("retirementPayoutRate"); }
-    get birthdayCirculationFraction(): number  { return this.get<number>("birthdayCirculationFraction"); }
-    get communityDuesRate(): number             { return this.get<number>("communityDuesRate"); }
-    get endowmentPoolFraction(): number        { return this.get<number>("endowmentPoolFraction"); }
-    get memberAdmissionVouchesRequired(): number { return this.get<number>("memberAdmissionVouchesRequired"); }
-    get stewardshipThresholdYears(): number       { return this.get<number>("stewardshipThresholdYears"); }
-
-    /** Which governance body must authorize the given action. Returns null if not in the map. */
-    getRequiredBody(action: string): GovernanceBody | null {
-        return this.doc.authorityMap.find(a => a.action === action)?.body ?? null;
-    }
-
-    /** The vote rule ID constitutionally mandated for the given action. Returns null if not in the map. */
-    getRequiredVoteRule(action: string): string | null {
-        return this.doc.authorityMap.find(a => a.action === action)?.voteRuleId ?? null;
-    }
-
-    get authorityMap(): readonly ActionAuthority[] { return this.doc.authorityMap; }
-}

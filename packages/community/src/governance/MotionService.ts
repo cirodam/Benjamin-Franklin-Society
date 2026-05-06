@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 import { Motion, type MotionOutcome, type CommentKind } from "./Motion.js";
 import { MotionLoader } from "./MotionLoader.js";
-import { PersonService } from "../person/PersonService.js";
+import { AuthorityService } from "./AuthorityService.js";
 import { effectRegistry } from "./EffectRegistry.js";
 import { CommunityLogService } from "../log/CommunityLogService.js";
 import { getVoteRule } from "@ecf/core";
@@ -22,9 +22,9 @@ export class MotionService {
     init(loader: MotionLoader): void {
         this.loader = loader;
         this.motions = new Map(loader.loadAll().map(m => [m.id, m]));
-        // Advance any expired voting-stage referenda
+        // Advance any expired voting-stage motions
         for (const m of this.motions.values()) {
-            if (m.isReferendum && m.stage === "voting" && m.votingClosesAt) {
+            if (m.stage === "voting" && m.votingClosesAt) {
                 if (new Date() > new Date(m.votingClosesAt)) {
                     this.resolveByDeadline(m);
                 }
@@ -38,23 +38,22 @@ export class MotionService {
 
     get(id: string): Motion | undefined { return this.motions.get(id); }
 
-    getByBody(body: string): Motion[] {
-        return this.getAll().filter(m => m.body === body);
+    getByAuthority(authorityId: string): Motion[] {
+        return this.getAll().filter(m => m.authorityId === authorityId);
     }
 
     getByProposer(personId: string): Motion[] {
         return this.getAll().filter(m => m.proposerId === personId);
     }
 
-    // ── Referendum lifecycle ──────────────────────────────────────────────────
+    // ── Lifecycle ─────────────────────────────────────────────────────────────
 
     /**
-     * Create a new motion.
-     * - referendum: starts in "draft"
-     * - assembly/pool: starts in "proposed"
+     * Create a new motion in draft stage.
+     * All motions follow the single lifecycle: draft → deliberating → voting → resolved.
      */
     create(opts: {
-        body:            string;
+        authorityId:     string;
         title:           string;
         description:     string;
         proposerId:      string;
@@ -72,8 +71,8 @@ export class MotionService {
     }
 
     /**
-     * Submit a referendum draft for deliberation.
-     * The vote rule governs eligibility, legitimacy standard, deliberation period, and voting window.
+     * Submit a draft motion for deliberation.
+     * The vote rule governs the legitimacy standard, deliberation period, and voting window.
      */
     submitForDeliberation(
         motionId:     string,
@@ -82,7 +81,6 @@ export class MotionService {
         minApprovals?: number,
     ): Motion {
         const m = this.require(motionId);
-        if (!m.isReferendum)           throw new Error("Only referendum motions use deliberation");
         if (m.stage !== "draft")        throw new Error("Motion is not a draft");
         if (m.proposerId !== callerId)  throw new Error("Only the proposer can submit for deliberation");
 
@@ -112,12 +110,11 @@ export class MotionService {
     }
 
     /**
-     * Open voting on a deliberating referendum motion.
+     * Open voting on a deliberating motion.
      * Can only be called after the deliberation period has elapsed.
      */
     openVoting(motionId: string, callerId: string): Motion {
         const m = this.require(motionId);
-        if (!m.isReferendum)           throw new Error("Only referendum motions use this transition");
         if (m.stage !== "deliberating") throw new Error("Motion is not in deliberation");
         if (m.pendingAmendmentIds.length > 0) throw new Error("Pending amendments must resolve first");
         if (m.votingOpensAt && new Date() < new Date(m.votingOpensAt)) {
@@ -138,7 +135,7 @@ export class MotionService {
         return m;
     }
 
-    /** Cast a vote on a referendum motion. */
+    /** Cast a vote on a motion. Caller must be a member of the motion's authority. */
     castVote(
         motionId: string,
         voterId:  string,
@@ -146,19 +143,20 @@ export class MotionService {
         vote:     "approve" | "reject" | "abstain",
     ): Motion {
         const m = this.require(motionId);
-        if (!m.isReferendum)      throw new Error("Use clerk actions for assembly/pool motions");
         if (m.stage !== "voting") throw new Error("Motion is not in voting stage");
         if (m.votingClosesAt && new Date() > new Date(m.votingClosesAt)) {
             this.resolveByDeadline(m);
             throw new Error("Voting period has closed");
+        }
+        if (!AuthorityService.getInstance().isMember(m.authorityId, voterId)) {
+            throw new Error("You are not a member of the authority governing this motion");
         }
         if (m.hasVoted(voterId)) throw new Error("You have already voted on this motion");
 
         m.votes.push({ personId: voterId, handle: voterHandle, vote, votedAt: new Date().toISOString() });
         this.loader.save(m);
 
-        // Check early resolution by threshold
-        this.checkReferendumResolution(m);
+        this.checkResolution(m);
         return m;
     }
 
@@ -190,49 +188,6 @@ export class MotionService {
         return m;
     }
 
-    // ── Clerk lifecycle (assembly / pool) ─────────────────────────────────────
-
-    /** Mark a proposed docket item as discussed. Steward-only. */
-    markDiscussed(motionId: string): Motion {
-        const m = this.require(motionId);
-        if (m.isReferendum)         throw new Error("Use referendum lifecycle for referendum motions");
-        if (m.stage !== "proposed") throw new Error("Motion must be in 'proposed' stage");
-        m.stage = "discussed";
-        this.loader.save(m);
-        return m;
-    }
-
-    /** Record the in-room vote outcome. Steward-only. */
-    recordOutcome(
-        motionId:   string,
-        outcome:    MotionOutcome,
-        outcomeNote = "",
-    ): Motion {
-        const m = this.require(motionId);
-        if (m.isReferendum) throw new Error("Use referendum lifecycle for referendum motions");
-        if (m.stage === "resolved") throw new Error("Motion already resolved");
-
-        m.stage       = outcome === "referred" ? "resolved" : "voted";
-        m.outcome     = outcome;
-        m.outcomeNote = outcomeNote;
-
-        if (outcome !== "referred") {
-            m.stage     = "resolved";
-            m.resolvedAt = new Date().toISOString();
-        }
-
-        if (outcome === "passed") effectRegistry.dispatch(m);
-        this.loader.save(m);
-        try {
-            const logSvc = CommunityLogService.getInstance();
-            if (outcome === "passed")    logSvc.write("motion-passed",    `Motion passed: ${m.title}`, { refId: m.id });
-            else if (outcome === "failed") logSvc.write("motion-failed",  `Motion failed: ${m.title}`, { refId: m.id });
-        } catch { /* log service may not be initialised in tests */ }
-        return m;
-    }
-
-    // ── Shared actions ────────────────────────────────────────────────────────
-
     /** Withdraw a motion before it resolves. Only the proposer. */
     withdraw(motionId: string, callerId: string): Motion {
         const m = this.require(motionId);
@@ -253,11 +208,15 @@ export class MotionService {
         return m;
     }
 
+    private eligibleCount(m: Motion): number {
+        return AuthorityService.getInstance().getMemberIds(m.authorityId).length;
+    }
+
     private resolveByDeadline(m: Motion): void {
         const rule       = m.voteRuleId ? getVoteRule(m.voteRuleId) : null;
         const legitimacy = rule?.legitimacy ?? "absolute-majority";
         const needed     = this.getNeededApprovals(m);
-        const eligible   = PersonService.getInstance().getAll().filter(p => !p.disabled).length;
+        const eligible   = this.eligibleCount(m);
 
         m.outcome    = m.approvalCount >= needed ? "passed" : "failed";
         m.stage      = "resolved";
@@ -278,11 +237,11 @@ export class MotionService {
         } catch { /* log service may not be initialised in tests */ }
     }
 
-    private checkReferendumResolution(m: Motion): void {
+    private checkResolution(m: Motion): void {
         const rule       = m.voteRuleId ? getVoteRule(m.voteRuleId) : null;
         const legitimacy = rule?.legitimacy ?? "absolute-majority";
         const needed     = this.getNeededApprovals(m);
-        const eligible   = PersonService.getInstance().getAll().filter(p => !p.disabled).length;
+        const eligible   = this.eligibleCount(m);
 
         // Early pass
         if (m.approvalCount >= needed) {
@@ -315,7 +274,7 @@ export class MotionService {
     }
 
     private getNeededApprovals(m: Motion): number {
-        const eligible = PersonService.getInstance().getAll().filter(p => !p.disabled).length;
+        const eligible = this.eligibleCount(m);
         const rule = getVoteRule(m.voteRuleId ?? "referendum-general");
         if (rule.legitimacy === "petition") return m.minApprovals ?? 1;
         return Math.ceil(eligible * (rule.thresholdFraction ?? 0.51));

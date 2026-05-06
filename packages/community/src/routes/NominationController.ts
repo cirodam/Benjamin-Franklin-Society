@@ -168,7 +168,7 @@ export function confirmNomination(req: AuthedRequest, res: Response): void {
     const unitLabel   = unit?.name  ?? n.unitId;
 
     const motion = MotionService.getInstance().create({
-        body:           "assembly",
+        authorityId:    "assembly",
         title:          `Confirm nomination: ${nomineeName} for ${roleLabel}`,
         description:    `${nomineeName} has accepted the nomination for ${roleLabel}` +
                         (unitLabel ? ` in ${unitLabel}` : "") +
