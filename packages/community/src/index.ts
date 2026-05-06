@@ -18,8 +18,7 @@ export { UnitTemplateRegistry } from "./common/domain/UnitTemplateRegistry.js";
 
 export { LeaderPool } from "@ecf/core";
 export { LeaderPoolLoader } from "./governance/LeaderPoolLoader.js";
-export { VoteThreshold } from "./governance/Constitution.js";
-export type { ConstitutionAmendment, ConstitutionalParameter, ConstitutionMetadata, ActionAuthority, GovernanceBody } from "./governance/Constitution.js";
+export type { ConstitutionAmendment, ConstitutionalParameter, ConstitutionMetadata, ActionAuthority } from "./governance/Constitution.js";
 export { ConstitutionLoader } from "./governance/ConstitutionLoader.js";
 export { DocumentLoader } from "./governance/DocumentLoader.js";
 

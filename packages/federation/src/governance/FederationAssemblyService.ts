@@ -1,11 +1,10 @@
-import { FederationAssemblyTerm } from "./FederationAssemblyTerm.js";
-import type { FederationAssemblyTermLoader } from "./FederationAssemblyTermLoader.js";
+import { AssemblyTerm, AssemblyTermLoader } from "@ecf/core";
 import { FederationMemberService } from "../FederationMemberService.js";
 
 export class FederationAssemblyService {
     private static instance: FederationAssemblyService;
-    private loader!: FederationAssemblyTermLoader;
-    private terms: FederationAssemblyTerm[] = [];
+    private loader!: AssemblyTermLoader;
+    private terms: AssemblyTerm[] = [];
 
     private constructor() {}
 
@@ -16,7 +15,7 @@ export class FederationAssemblyService {
         return FederationAssemblyService.instance;
     }
 
-    init(loader: FederationAssemblyTermLoader): void {
+    init(loader: AssemblyTermLoader): void {
         this.loader = loader;
         this.terms  = loader.loadAll();
         console.log(`[FederationAssemblyService] loaded ${this.terms.length} term(s)`);
@@ -24,15 +23,15 @@ export class FederationAssemblyService {
 
     // ── Queries ───────────────────────────────────────────────────────────────
 
-    getCurrentTerm(): FederationAssemblyTerm | null {
+    getCurrentTerm(): AssemblyTerm | null {
         return this.terms.find(t => t.endsAt === null) ?? this.terms[0] ?? null;
     }
 
-    getTermById(id: string): FederationAssemblyTerm | undefined {
+    getTermById(id: string): AssemblyTerm | undefined {
         return this.terms.find(t => t.id === id);
     }
 
-    getAllTerms(): FederationAssemblyTerm[] { return [...this.terms]; }
+    getAllTerms(): AssemblyTerm[] { return [...this.terms]; }
 
     // ── Term management ───────────────────────────────────────────────────────
 
@@ -40,7 +39,7 @@ export class FederationAssemblyService {
      * Start a new assembly term. Closes the current open term first.
      * Seats are populated with one vacant slot per member community.
      */
-    startNewTerm(): FederationAssemblyTerm {
+    startNewTerm(): AssemblyTerm {
         const current = this.getCurrentTerm();
         if (current && current.endsAt === null) {
             current.endsAt = new Date().toISOString();
@@ -51,14 +50,14 @@ export class FederationAssemblyService {
         const members    = FederationMemberService.getInstance().getAll();
 
         const seats = members.map(m => ({
-            communityMemberId: m.id,
-            communityHandle:   m.handle,
-            personHandle:      null,
-            personName:        null,
-            seatedAt:          null,
+            communityId:     m.id,
+            communityHandle: m.handle,
+            personHandle:    null as string | null,
+            personName:      null as string | null,
+            seatedAt:        null as string | null,
         }));
 
-        const term = new FederationAssemblyTerm({ termNumber: nextNumber, seats });
+        const term = new AssemblyTerm({ termNumber: nextNumber, seats });
         this.terms.unshift(term);
         this.loader.save(term);
         console.log(`[FederationAssemblyService] started term ${nextNumber} with ${seats.length} seat(s)`);
@@ -70,22 +69,22 @@ export class FederationAssemblyService {
      * Each community has exactly one seat; calling this again replaces the delegate.
      */
     seatDelegate(opts: {
-        communityMemberId: string;
-        communityHandle:   string;
-        personHandle:      string;
-        personName:        string;
-    }): FederationAssemblyTerm {
+        communityId:     string;
+        communityHandle: string;
+        personHandle:    string;
+        personName:      string;
+    }): AssemblyTerm {
         const term = this.currentOrThrow();
 
-        let seat = term.getSeat(opts.communityMemberId);
+        let seat = term.seats.find(s => s.communityId === opts.communityId);
         if (!seat) {
             // Add seat if community joined after this term started
             seat = {
-                communityMemberId: opts.communityMemberId,
-                communityHandle:   opts.communityHandle,
-                personHandle:      null,
-                personName:        null,
-                seatedAt:          null,
+                communityId:     opts.communityId,
+                communityHandle: opts.communityHandle,
+                personHandle:    null,
+                personName:      null,
+                seatedAt:        null,
             };
             term.seats.push(seat);
         }
@@ -98,9 +97,9 @@ export class FederationAssemblyService {
     }
 
     /** Remove a delegate from their seat (vacate). */
-    vacateSeat(communityMemberId: string): FederationAssemblyTerm {
+    vacateSeat(communityId: string): AssemblyTerm {
         const term = this.currentOrThrow();
-        const seat = term.getSeat(communityMemberId);
+        const seat = term.seats.find(s => s.communityId === communityId);
         if (!seat) throw new Error("No seat found for this community");
 
         seat.personHandle = null;
@@ -115,17 +114,17 @@ export class FederationAssemblyService {
         const term = this.getCurrentTerm();
         if (!term) return;
 
-        const members    = FederationMemberService.getInstance().getAll();
-        let   changed    = false;
+        const members = FederationMemberService.getInstance().getAll();
+        let   changed = false;
 
         for (const m of members) {
-            if (!term.getSeat(m.id)) {
+            if (!term.seats.find(s => s.communityId === m.id)) {
                 term.seats.push({
-                    communityMemberId: m.id,
-                    communityHandle:   m.handle,
-                    personHandle:      null,
-                    personName:        null,
-                    seatedAt:          null,
+                    communityId:     m.id,
+                    communityHandle: m.handle,
+                    personHandle:    null,
+                    personName:      null,
+                    seatedAt:        null,
                 });
                 changed = true;
             }
@@ -136,7 +135,7 @@ export class FederationAssemblyService {
 
     // ── Internal ──────────────────────────────────────────────────────────────
 
-    private currentOrThrow(): FederationAssemblyTerm {
+    private currentOrThrow(): AssemblyTerm {
         const term = this.getCurrentTerm();
         if (!term) throw new Error("No assembly term is currently active");
         return term;

@@ -19,7 +19,7 @@ function toDto(m: Motion) {
     return {
         ...rest,
         authorityId: m.authorityId,
-        votes:    data.votes.map(({ personId: _vpid, ...v }) => v),
+        votes:    data.votes.map(({ voterId: _vpid, ...v }) => v),
         comments: data.comments.map(({ authorId: _acid, ...c }) => c),
     };
 }
@@ -241,8 +241,8 @@ export function recordDissent(req: AuthedRequest, res: Response): void {
     }
 }
 
-// POST /api/motions/:id/discuss  (admin override — force motion to deliberation)
-export function markDiscussed(req: AuthedRequest, res: Response): void {
+// POST /api/motions/:id/deliberate  (steward override — advance to deliberation)
+export function submitDeliberation(req: AuthedRequest, res: Response): void {
     const personId = req.personId;
     if (!personId) { res.status(401).json({ error: "Unauthorized" }); return; }
     try {
@@ -253,22 +253,26 @@ export function markDiscussed(req: AuthedRequest, res: Response): void {
     }
 }
 
-// POST /api/motions/:id/outcome  (admin override — force-resolve)
+// POST /api/motions/:id/outcome  (steward override — force-resolve)
 export function recordOutcome(req: AuthedRequest, res: Response): void {
     const { outcome, outcomeNote } = req.body ?? {};
     const validOutcomes = ["passed", "failed", "withdrawn", "referred"];
     if (!validOutcomes.includes(outcome as string)) {
         res.status(400).json({ error: `outcome must be one of: ${validOutcomes.join(", ")}` }); return;
     }
-    const m = svc().get(req.params.id as string);
-    if (!m) { res.status(404).json({ error: "Motion not found" }); return; }
-    if (m.isResolved) { res.status(400).json({ error: "Motion already resolved" }); return; }
-    // Force-resolve without going through the normal lifecycle
-    m.stage       = "resolved";
-    m.outcome     = outcome as "passed" | "failed" | "withdrawn" | "referred";
-    m.outcomeNote = typeof outcomeNote === "string" ? outcomeNote : "";
-    m.resolvedAt  = new Date().toISOString();
-    res.json(toDto(m));
+    try {
+        const m = svc().forceResolve(
+            req.params.id as string,
+            outcome as "passed" | "failed" | "withdrawn" | "referred",
+            typeof outcomeNote === "string" ? outcomeNote : "",
+        );
+        if (m.outcome === "passed") {
+            try { effectRegistry.dispatch(m); } catch { /* non-fatal */ }
+        }
+        res.json(toDto(m));
+    } catch (err) {
+        res.status(400).json({ error: (err as Error).message });
+    }
 }
 
 // DELETE /api/motions/:id  (withdraw)

@@ -11,17 +11,16 @@ import type { HealthInsuranceClaim } from "../domains/health_insurance/HealthIns
 function motionToDto(m: FederationMotion) {
     return {
         id:                    m.id,
-        body:                  m.body,
+        body:                  m.authorityId,
         stage:                 m.stage,
         title:                 m.title,
         description:           m.description,
-        proposerMemberId:      m.proposerMemberId,
+        proposerId:            m.proposerId,
         proposerHandle:        m.proposerHandle,
         createdAt:             m.createdAt,
         deliberationStartedAt: m.deliberationStartedAt,
         votingOpensAt:         m.votingOpensAt,
         votingClosesAt:        m.votingClosesAt,
-        thresholdKey:          m.thresholdKey,
         votes:                 m.votes,
         comments:              m.comments,
         outcome:               m.outcome,
@@ -70,25 +69,25 @@ export function startAssemblyTerm(_req: Request, res: Response): void {
 
 /** POST /api/assembly/delegates — seat or update a community's delegate */
 export function seatDelegate(req: Request, res: Response): void {
-    const { communityMemberId, communityHandle, personHandle, personName } = req.body as {
-        communityMemberId?: string;
-        communityHandle?:   string;
-        personHandle?:      string;
-        personName?:        string;
+    const { communityId, communityHandle, personHandle, personName } = req.body as {
+        communityId?:    string;
+        communityHandle?: string;
+        personHandle?:   string;
+        personName?:     string;
     };
 
-    if (!communityMemberId || !communityHandle || !personHandle || !personName) {
-        res.status(400).json({ error: "communityMemberId, communityHandle, personHandle, and personName are required" });
+    if (!communityId || !communityHandle || !personHandle || !personName) {
+        res.status(400).json({ error: "communityId, communityHandle, personHandle, and personName are required" });
         return;
     }
 
     // Verify this community is a member
-    const member = FederationMemberService.getInstance().getById(communityMemberId);
+    const member = FederationMemberService.getInstance().getById(communityId);
     if (!member) { res.status(404).json({ error: "Community not found" }); return; }
 
     try {
         const term = FederationAssemblyService.getInstance().seatDelegate({
-            communityMemberId,
+            communityId,
             communityHandle,
             personHandle,
             personName,
@@ -140,7 +139,9 @@ export function createMotion(req: Request, res: Response): void {
 
     try {
         const motion = FederationMotionService.getInstance().create({
-            body, title, description, proposerMemberId, proposerHandle, parentId,
+            body, title, description,
+            proposerId:     proposerMemberId,
+            proposerHandle, parentId,
         });
         res.status(201).json(motionToDto(motion));
     } catch (err) {

@@ -183,6 +183,12 @@ export class CommunityDb {
                 data TEXT NOT NULL
             );
 
+            -- ── Assembly terms (historical record) ────────────────────────────────────
+            CREATE TABLE IF NOT EXISTS assembly_terms (
+                id   TEXT PRIMARY KEY,
+                data TEXT NOT NULL
+            );
+
             -- ── Singleton records (key/value) ─────────────────────────────────────────
             CREATE TABLE IF NOT EXISTS singleton_records (
                 key  TEXT PRIMARY KEY,

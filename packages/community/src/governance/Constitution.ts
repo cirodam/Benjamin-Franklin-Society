@@ -2,17 +2,9 @@ import { type DocumentArticle } from "@ecf/core";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export type GovernanceBody = "council" | "assembly" | "referendum";
-
-export enum VoteThreshold {
-    SIMPLE_MAJORITY = "SIMPLE_MAJORITY",
-    SUPERMAJORITY   = "SUPERMAJORITY",
-    NEAR_CONSENSUS  = "NEAR_CONSENSUS",
-}
-
 export interface ActionAuthority {
     readonly action:      string;
-    readonly body:        GovernanceBody;
+    readonly body:        string;
     readonly description: string;
     /** The vote rule that must be applied to motions of this action type.
      *  Must be a key from the VOTE_RULES registry in @ecf/core. */

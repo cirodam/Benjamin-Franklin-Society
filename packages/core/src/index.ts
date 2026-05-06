@@ -28,9 +28,11 @@ export { messageRouter } from "./network/networkRoutes.js";
 // storage
 export * from "./storage/FileStore.js";
 export * from "./storage/BaseLoader.js";
-export * from "./governance/AssemblyMotion.js";
 export * from "./governance/AssemblyTerm.js";
+export * from "./governance/AssemblyTermLoader.js";
+export * from "./governance/Assembly.js";
 export * from "./governance/Authority.js";
+export * from "./governance/Committee.js";
 export * from "./governance/BaseApplication.js";
 export * from "./governance/DocumentFramework.js";
 export * from "./governance/EffectRegistry.js";

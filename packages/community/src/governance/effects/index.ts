@@ -27,7 +27,7 @@ import { Association } from "../../association/Association.js";
 
 effectRegistry.register("amend-constitution", {
     label:     "Amend constitution",
-    bodyHint:  "referendum",
+    authorityId:  "referendum",
     validate(raw) {
         if (typeof raw !== "object" || raw === null) return "Payload must be an object";
         const p = raw as Record<string, unknown>;
@@ -58,7 +58,7 @@ effectRegistry.register("amend-constitution", {
 
 effectRegistry.register("set-dues-rate", {
     label:    "Set dues rate",
-    bodyHint: "referendum",
+    authorityId: "referendum",
     validate(raw) {
         if (typeof raw !== "object" || raw === null) return "Payload must be an object";
         const p = raw as Record<string, unknown>;
@@ -90,7 +90,7 @@ effectRegistry.register("set-dues-rate", {
 
 effectRegistry.register("set-retirement-age", {
     label:    "Set retirement age",
-    bodyHint: "referendum",
+    authorityId: "referendum",
     validate(raw) {
         if (typeof raw !== "object" || raw === null) return "Payload must be an object";
         const p = raw as Record<string, unknown>;
@@ -123,7 +123,7 @@ effectRegistry.register("set-retirement-age", {
 
 effectRegistry.register("set-retirement-payout", {
     label:    "Set retirement payout",
-    bodyHint: "referendum",
+    authorityId: "referendum",
     validate(raw) {
         if (typeof raw !== "object" || raw === null) return "Payload must be an object";
         const p = raw as Record<string, unknown>;
@@ -158,7 +158,7 @@ effectRegistry.register("set-retirement-payout", {
 
 effectRegistry.register("add-person", {
     label:    "Add person",
-    bodyHint: "referendum",
+    authorityId: "referendum",
     validate(raw) {
         if (typeof raw !== "object" || raw === null) return "Payload must be an object";
         const p = raw as Record<string, unknown>;
@@ -254,13 +254,13 @@ effectRegistry.register("reinstate-member", {
     },
 });
 
-// ── add-role ──────────────────────────────────────────────────────────────────
+// ── add-pool ──────────────────────────────────────────────────────────────────
 // Creates a new LeaderPool (a named governing group).
 // Payload: { name: string, description?: string }
 
-effectRegistry.register("add-role", {
+effectRegistry.register("add-pool", {
     label:    "Add leadership pool",
-    bodyHint: "assembly",
+    authorityId: "assembly",
     validate(raw) {
         if (typeof raw !== "object" || raw === null) return "Payload must be an object";
         const p = raw as Record<string, unknown>;
@@ -270,19 +270,19 @@ effectRegistry.register("add-role", {
     handler({ motion, payload }) {
         const name        = (payload.name as string).trim();
         const description = typeof payload.description === "string" ? payload.description.trim() : "";
-        const pool = new LeaderPool(name, description);
+        const pool = new LeaderPool(undefined, name, "simple-majority", description);
         DomainService.getInstance().createPool(pool);
         motion.outcomeNote = `Leadership pool "${name}" created (id: ${pool.id}).`;
     },
 });
 
-// ── remove-role ───────────────────────────────────────────────────────────────
+// ── remove-pool ───────────────────────────────────────────────────────────────
 // Deletes an existing LeaderPool by ID.
 // Payload: { poolId: string }
 
-effectRegistry.register("remove-role", {
+effectRegistry.register("remove-pool", {
     label:    "Remove leadership pool",
-    bodyHint: "assembly",
+    authorityId: "assembly",
     validate(raw) {
         if (typeof raw !== "object" || raw === null) return "Payload must be an object";
         const p = raw as Record<string, unknown>;
@@ -355,7 +355,7 @@ const VALID_RECURRENCE = new Set(["daily", "weekly", "biweekly", "monthly", "yea
 
 effectRegistry.register("schedule-community-event", {
     label:    "Schedule community event",
-    bodyHint: "assembly",
+    authorityId: "assembly",
     validate(raw) {
         if (typeof raw !== "object" || raw === null) return "Payload must be an object";
         const p = raw as Record<string, unknown>;
@@ -431,8 +431,8 @@ effectRegistry.register("create-bylaw", {
         return null;
     },
     handler({ motion, payload }) {
-        const domainId   = motion.body === "assembly" ? null : motion.body;
-        const authorityId = motion.body === "assembly" ? "assembly" : `council:${motion.body}`;
+        const domainId   = motion.authorityId === "assembly" ? null : motion.authorityId;
+        const authorityId = motion.authorityId === "assembly" ? "assembly" : `council:${motion.authorityId}`;
         const loader = new DocumentLoader();
         const sunsetYears = typeof payload.sunsetYears === "number" ? payload.sunsetYears : undefined;
         const bylaw  = loader.create(
@@ -488,9 +488,9 @@ effectRegistry.register("amend-bylaw", {
         if (!bylaw) throw new Error(`Bylaw ${bylawId} not found`);
 
         // Authority check: non-assembly bodies may only amend their own domain bylaws
-        if (motion.body !== "assembly" && bylaw.domainId !== motion.body) {
+        if (motion.authorityId !== "assembly" && bylaw.domainId !== motion.authorityId) {
             throw new Error(
-                `Body "${motion.body}" may not amend bylaw "${bylaw.title}" ` +
+                `Body "${motion.authorityId}" may not amend bylaw "${bylaw.title}" ` +
                 `(domain: "${bylaw.domainId ?? "universal"}")`,
             );
         }
@@ -534,7 +534,7 @@ effectRegistry.register("amend-bylaw", {
 
 effectRegistry.register("add-role-type", {
     label:    "Add role type to bank",
-    bodyHint: "assembly",
+    authorityId: "assembly",
     validate(raw) {
         if (typeof raw !== "object" || raw === null) return "Payload must be an object";
         const p = raw as Record<string, unknown>;
@@ -572,7 +572,7 @@ effectRegistry.register("add-role-type", {
 
 effectRegistry.register("remove-role-type", {
     label:    "Remove role type from bank",
-    bodyHint: "assembly",
+    authorityId: "assembly",
     validate(raw) {
         if (typeof raw !== "object" || raw === null) return "Payload must be an object";
         const p = raw as Record<string, unknown>;
@@ -603,7 +603,7 @@ effectRegistry.register("remove-role-type", {
 
 effectRegistry.register("add-unit-type", {
     label:    "Add unit type to bank",
-    bodyHint: "assembly",
+    authorityId: "assembly",
     validate(raw) {
         if (typeof raw !== "object" || raw === null) return "Payload must be an object";
         const p = raw as Record<string, unknown>;
@@ -641,7 +641,7 @@ effectRegistry.register("add-unit-type", {
 
 effectRegistry.register("remove-unit-type", {
     label:    "Remove unit type from bank",
-    bodyHint: "assembly",
+    authorityId: "assembly",
     validate(raw) {
         if (typeof raw !== "object" || raw === null) return "Payload must be an object";
         const p = raw as Record<string, unknown>;
@@ -682,7 +682,7 @@ effectRegistry.register("remove-unit-type", {
 
 effectRegistry.register("deploy-unit", {
     label:    "Deploy functional unit",
-    bodyHint: "assembly",
+    authorityId: "assembly",
     validate(raw) {
         if (typeof raw !== "object" || raw === null) return "Payload must be an object";
         const p = raw as Record<string, unknown>;
@@ -765,7 +765,7 @@ effectRegistry.register("deploy-unit", {
 
 effectRegistry.register("found-marketplace", {
     label:    "Found a marketplace",
-    bodyHint: "assembly",
+    authorityId: "assembly",
     validate(raw) {
         if (typeof raw !== "object" || raw === null) return "Payload must be an object";
         const p = raw as Record<string, unknown>;
@@ -828,7 +828,7 @@ effectRegistry.register("found-marketplace", {
 
 effectRegistry.register("create-association", {
     label:    "Create an association",
-    bodyHint: "referendum",
+    authorityId: "referendum",
     validate(raw) {
         if (typeof raw !== "object" || raw === null) return "Payload must be an object";
         const p = raw as Record<string, unknown>;
@@ -880,7 +880,7 @@ effectRegistry.register("create-association", {
 
 effectRegistry.register("add-pool-member", {
     label:    "Add person to leader pool",
-    bodyHint: "referendum",
+    authorityId: "referendum",
     validate(raw) {
         if (typeof raw !== "object" || raw === null) return "Payload must be an object";
         const p = raw as Record<string, unknown>;

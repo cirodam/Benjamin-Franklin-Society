@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import { Motion, type MotionOutcome, type CommentKind } from "@ecf/core";
+import { Motion, type MotionOutcome } from "@ecf/core";
 import { MotionLoader } from "./MotionLoader.js";
 import { AuthorityService } from "./AuthorityService.js";
 import { effectRegistry } from "@ecf/core";
@@ -153,7 +153,7 @@ export class MotionService {
         }
         if (m.hasVoted(voterId)) throw new Error("You have already voted on this motion");
 
-        m.votes.push({ personId: voterId, handle: voterHandle, vote, votedAt: new Date().toISOString() });
+        m.votes.push({ voterId, voterHandle, vote, votedAt: new Date().toISOString() });
         this.loader.save(m);
 
         this.checkResolution(m);
@@ -161,7 +161,7 @@ export class MotionService {
     }
 
     /** Add a comment during deliberation or voting. */
-    addComment(motionId: string, authorId: string, authorHandle: string, body: string, kind: CommentKind = "general"): Motion {
+    addComment(motionId: string, authorId: string, authorHandle: string, body: string, kind: string = "general"): Motion {
         const m = this.require(motionId);
         if (m.stage === "draft" || m.stage === "resolved") {
             throw new Error("Comments can only be added during deliberation or voting");
@@ -196,6 +196,18 @@ export class MotionService {
         m.stage      = "resolved";
         m.outcome    = "withdrawn";
         m.resolvedAt = new Date().toISOString();
+        this.loader.save(m);
+        return m;
+    }
+
+    /** Steward override — force-resolve a motion without going through the normal lifecycle. */
+    forceResolve(motionId: string, outcome: "passed" | "failed" | "withdrawn" | "referred", outcomeNote = ""): Motion {
+        const m = this.require(motionId);
+        if (m.isResolved) throw new Error("Motion already resolved");
+        m.stage       = "resolved";
+        m.outcome     = outcome;
+        m.outcomeNote = outcomeNote;
+        m.resolvedAt  = new Date().toISOString();
         this.loader.save(m);
         return m;
     }

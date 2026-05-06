@@ -291,7 +291,7 @@ export function seedDomains(domainSvc: DomainService): void {
              "Govern decisions related to conflict resolution processes, restorative practice standards, and the mediation domain."],
         ];
         for (const [name, description, mandate] of defaultPools) {
-            const pool = new LeaderPool(name, description);
+            const pool = new LeaderPool(undefined, name, "simple-majority", description);
             pool.mandate = mandate;
             domainSvc.createPool(pool);
         }

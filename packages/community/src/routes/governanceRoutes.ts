@@ -3,9 +3,11 @@ import { requireAuth, requireSteward } from "./middleware.js";
 import * as motions   from "./MotionController.js";
 import { ConstitutionLoader } from "../governance/ConstitutionLoader.js";
 import { DocumentLoader } from "../governance/DocumentLoader.js";
-import { CommunityDb } from "../CommunityDb.js";
+import { AuthorityLoader } from "../governance/AuthorityLoader.js";
 import { PersonService } from "../person/PersonService.js";
 import { CommunityLogService } from "../log/CommunityLogService.js";
+import { Assembly, AssemblyTerm, type AssemblyTermData } from "@ecf/core";
+import { CommunityDb } from "../CommunityDb.js";
 
 const router = Router();
 const bylaws = new DocumentLoader();
@@ -17,11 +19,11 @@ router.get(   "/motions",                    motions.listMotions);
 router.get(   "/motions/:id",                motions.getMotion);
 router.post(  "/motions",                    requireAuth,    motions.createMotion);
 router.post(  "/motions/:id/deliberate",     requireAuth,    motions.submitForDeliberation);
-router.post(  "/motions/:id/open-voting",    requireAuth,    motions.openVoting);
-router.post(  "/motions/:id/vote",           requireAuth,    motions.castVote);
-router.post(  "/motions/:id/comment",        requireAuth,    motions.addComment);
-router.post(  "/motions/:id/dissent",        requireAuth,    motions.recordDissent);
-router.post(  "/motions/:id/discuss",        requireSteward, motions.markDiscussed);
+ router.post(  "/motions/:id/open-voting",    requireAuth,    motions.openVoting);
+ router.post(  "/motions/:id/vote",           requireAuth,    motions.castVote);
+ router.post(  "/motions/:id/comment",        requireAuth,    motions.addComment);
+ router.post(  "/motions/:id/dissent",        requireAuth,    motions.recordDissent);
+ router.post(  "/motions/:id/discuss",        requireSteward, motions.submitDeliberation);
 router.post(  "/motions/:id/outcome",        requireSteward, motions.recordOutcome);
 router.delete("/motions/:id",                requireAuth,    motions.withdrawMotion);
 
@@ -143,28 +145,15 @@ router.delete("/bylaws/:id", requireSteward, rejectCharter, (req: Request, res: 
 
 // ── Assembly term ─────────────────────────────────────────────────────────────
 
-interface AssemblyTermRecord {
-    termStartDate: string;   // ISO date (YYYY-MM-DD)
-    memberIds:     string[];
+function loadAssembly(): Assembly {
+    const a = AuthorityLoader.getInstance().load("assembly");
+    if (a instanceof Assembly) return a;
+    // Fallback: create a blank one (should always exist after seeding)
+    return new Assembly("assembly", "Assembly", "simple-majority");
 }
 
-const ASSEMBLY_KEY = "assembly_term";
-
-function loadTerm(): AssemblyTermRecord | null {
-    const db  = CommunityDb.getInstance().db;
-    const row = db.prepare("SELECT data FROM singleton_records WHERE key = ?").get(ASSEMBLY_KEY) as { data: string } | undefined;
-    return row ? JSON.parse(row.data) as AssemblyTermRecord : null;
-}
-
-function saveTerm(term: AssemblyTermRecord): void {
-    CommunityDb.getInstance().db.prepare(
-        "INSERT INTO singleton_records (key, data) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET data = excluded.data"
-    ).run(ASSEMBLY_KEY, JSON.stringify(term));
-}
-
-function computeSeats(population: number): number {
-    const fraction = ConstitutionLoader.getInstance().assemblyFraction;
-    return Math.max(9, Math.ceil(population * fraction));
+function computeSeats(): number {
+    return ConstitutionLoader.getInstance().get<number>("assemblySeatCount");
 }
 
 function personToSlimDto(p: { id: string; firstName: string; lastName: string; handle: string }) {
@@ -174,28 +163,25 @@ function personToSlimDto(p: { id: string; firstName: string; lastName: string; h
 // GET /api/governance/assembly
 router.get("/assembly", (_req: Request, res: Response) => {
     const persons = PersonService.getInstance().getAll().filter(p => !p.disabled);
-    const seats   = computeSeats(persons.length);
-    const term    = loadTerm();
+    const seats   = computeSeats();
+    const asm     = loadAssembly();
     const constitution = ConstitutionLoader.getInstance();
 
-    const seatedPersons = term
-        ? term.memberIds
-            .map(id => PersonService.getInstance().get(id))
-            .filter(Boolean)
-            .map(p => personToSlimDto(p!))
-        : [];
+    const seatedPersons = asm.memberIds
+        .map(id => PersonService.getInstance().get(id))
+        .filter(Boolean)
+        .map(p => personToSlimDto(p!));
 
     const termWindow = constitution.currentTermWindow();
 
     res.json({
         seats,
-        fraction:               constitution.assemblyFraction,
         termMonths:             constitution.assemblyTermMonths,
         termStartMonth:         constitution.assemblyTermStartMonth,
         termStartDay:           constitution.assemblyTermStartDay,
         canonicalTermStartDate: termWindow.start.toISOString().slice(0, 10),
         canonicalTermEndDate:   termWindow.end.toISOString().slice(0, 10),
-        termStartDate:          term?.termStartDate ?? null,
+        termStartDate:          asm.termStartedAt,
         population:             persons.length,
         seated:                 seatedPersons,
     });
@@ -217,7 +203,7 @@ router.post("/assembly/draw", requireSteward, (req: Request, res: Response) => {
     const eligible     = PersonService.getInstance().getAll()
         .filter(p => !p.disabled && p.getAgeYears(now) >= workingMin);
 
-    const seats = computeSeats(eligible.length);
+    const seats = computeSeats();
 
     // Fisher-Yates shuffle, take first `seats` elements
     const pool = [...eligible];
@@ -227,11 +213,27 @@ router.post("/assembly/draw", requireSteward, (req: Request, res: Response) => {
     }
     const drawn = pool.slice(0, seats);
 
-    const term: AssemblyTermRecord = {
-        termStartDate: startDate,
-        memberIds:     drawn.map(p => p.id),
-    };
-    saveTerm(term);
+    const asm = loadAssembly();
+    asm.memberIds     = drawn.map(p => p.id);
+    asm.termStartedAt = startDate;
+    asm.termEndsAt    = constitution.currentTermWindow().end.toISOString().slice(0, 10);
+    AuthorityLoader.getInstance().save(asm);
+
+    // Record a historical term for audit trail
+    const db = CommunityDb.getInstance().db;
+    const prevRow = db.prepare("SELECT data FROM assembly_terms ORDER BY json_extract(data, '$.termNumber') DESC LIMIT 1").get() as { data: string } | undefined;
+    const termNumber = prevRow ? (JSON.parse(prevRow.data) as AssemblyTermData).termNumber + 1 : 1;
+    const term = new AssemblyTerm({
+        termNumber,
+        startedAt: new Date(startDate).toISOString(),
+        endsAt:    asm.termEndsAt,
+        seats:     drawn.map(p => ({
+            personId:     p.id,
+            personHandle: p.handle,
+            seatedAt:     new Date().toISOString(),
+        })),
+    });
+    db.prepare("INSERT INTO assembly_terms (id, data) VALUES (?, ?)").run(term.id, JSON.stringify(term.toData()));
 
     try {
         CommunityLogService.getInstance().write(
@@ -243,13 +245,12 @@ router.post("/assembly/draw", requireSteward, (req: Request, res: Response) => {
 
     res.json({
         seats,
-        fraction:               constitution.assemblyFraction,
         termMonths:             constitution.assemblyTermMonths,
         termStartMonth:         constitution.assemblyTermStartMonth,
         termStartDay:           constitution.assemblyTermStartDay,
         canonicalTermStartDate: constitution.currentTermWindow().start.toISOString().slice(0, 10),
         canonicalTermEndDate:   constitution.currentTermWindow().end.toISOString().slice(0, 10),
-        termStartDate:          term.termStartDate,
+        termStartDate:          startDate,
         population:             eligible.length,
         seated:                 drawn.map(p => personToSlimDto(p)),
     });
@@ -257,7 +258,11 @@ router.post("/assembly/draw", requireSteward, (req: Request, res: Response) => {
 
 // DELETE /api/governance/assembly  (steward only) — clear current term
 router.delete("/assembly", requireSteward, (_req: Request, res: Response) => {
-    CommunityDb.getInstance().db.prepare("DELETE FROM singleton_records WHERE key = ?").run(ASSEMBLY_KEY);
+    const asm = loadAssembly();
+    asm.memberIds     = [];
+    asm.termStartedAt = null;
+    asm.termEndsAt    = null;
+    AuthorityLoader.getInstance().save(asm);
     res.status(204).end();
 });
 

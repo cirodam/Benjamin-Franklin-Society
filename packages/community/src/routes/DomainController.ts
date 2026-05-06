@@ -332,7 +332,7 @@ export function createPool(req: Request, res: Response): void {
     if (typeof name !== "string" || !name.trim()) {
         res.status(400).json({ error: "name is required" }); return;
     }
-    const pool = new LeaderPool(name.trim(), description ?? "");
+    const pool = new LeaderPool(undefined, name.trim(), "simple-majority", description ?? "");
     svc().createPool(pool);
     res.status(201).json(toPoolDto(pool));
 }

@@ -18,7 +18,7 @@ import { HealthInsuranceDomain } from "./domains/health_insurance/HealthInsuranc
 import { HealthInsuranceClaimLoader } from "./domains/health_insurance/HealthInsuranceClaimLoader.js";
 import { FederationMotionLoader } from "./governance/FederationMotionLoader.js";
 import { FederationMotionService } from "./governance/FederationMotionService.js";
-import { FederationAssemblyTermLoader } from "./governance/FederationAssemblyTermLoader.js";
+import { AssemblyTermLoader } from "@ecf/core";
 import { FederationAssemblyService } from "./governance/FederationAssemblyService.js";
 import { BankClient } from "@ecf/core";
 import { CensusRecordLoader } from "./census/CensusRecordLoader.js";
@@ -317,7 +317,7 @@ async function main(): Promise<void> {
     const motionLoader = new FederationMotionLoader(resolve(DATA_DIR, "motions"));
     FederationMotionService.getInstance().init(motionLoader);
 
-    const assemblyTermLoader = new FederationAssemblyTermLoader(resolve(DATA_DIR, "assembly"));
+    const assemblyTermLoader = new AssemblyTermLoader(resolve(DATA_DIR, "assembly"));
     FederationAssemblyService.getInstance().init(assemblyTermLoader);
     // Ensure new member communities get seats if they joined after the current term started
     FederationAssemblyService.getInstance().syncSeats();

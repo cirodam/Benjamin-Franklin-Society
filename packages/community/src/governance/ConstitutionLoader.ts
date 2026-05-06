@@ -5,8 +5,6 @@ import {
     type ConstitutionalParameter,
     type ConstitutionAmendment,
     type ActionAuthority,
-    type GovernanceBody,
-    VoteThreshold,
     DEFAULT_ARTICLES,
     DEFAULT_CONSTITUTION_META,
 } from "./Constitution.js";
@@ -171,16 +169,7 @@ export class ConstitutionLoader {
 
     // ── Convenience parameter getters ────────────────────────────────────────
 
-    get thresholds(): Record<VoteThreshold, number> {
-        return {
-            [VoteThreshold.SIMPLE_MAJORITY]: this.get<number>("thresholdSimpleMajority"),
-            [VoteThreshold.SUPERMAJORITY]:   this.get<number>("thresholdSupermajority"),
-            [VoteThreshold.NEAR_CONSENSUS]:  this.get<number>("thresholdNearConsensus"),
-        };
-    }
-
     get deliberationPeriodDays(): number          { return this.get<number>("deliberationPeriodDays"); }
-    get assemblyFraction(): number                { return this.get<number>("assemblyFraction"); }
     get assemblyTermMonths(): number              { return this.get<number>("assemblyTermMonths"); }
     get assemblyTermStartMonth(): number          { return this.get<number>("assemblyTermStartMonth"); }
     get assemblyTermStartDay(): number            { return this.get<number>("assemblyTermStartDay"); }
@@ -218,10 +207,6 @@ export class ConstitutionLoader {
     }
 
     // ── Authority map ────────────────────────────────────────────────────────
-
-    getRequiredBody(action: string): GovernanceBody | null {
-        return this._meta.authorityMap.find(a => a.action === action)?.body ?? null;
-    }
 
     getRequiredVoteRule(action: string): string | null {
         return this._meta.authorityMap.find(a => a.action === action)?.voteRuleId ?? null;

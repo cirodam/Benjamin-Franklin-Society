@@ -137,9 +137,6 @@
         if (m.stage === "deliberating") return { label: "Deliberating", cls: "badge-deliberating" };
         if (m.stage === "voting")       return { label: "Voting open",  cls: "badge-voting" };
         if (m.stage === "draft")        return { label: "Draft",        cls: "badge-default" };
-        if (m.stage === "proposed")     return { label: "Proposed",     cls: "badge-default" };
-        if (m.stage === "discussed")    return { label: "Discussed",    cls: "badge-default" };
-        if (m.stage === "voted")        return { label: "Voted",        cls: "badge-default" };
         if (m.stage === "resolved") {
             if (m.outcome === "passed")    return { label: "Passed",    cls: "badge-passed" };
             if (m.outcome === "failed")    return { label: "Failed",    cls: "badge-failed" };
@@ -258,29 +255,24 @@
         <!-- Steward override actions -->
         {#if !isMembership && isSteward && motion.stage !== "resolved"}
             <div class="clerk-actions">
-                {#if motion.stage === "proposed"}
-                    <button class="btn-action" onclick={doMarkDiscussed}>Mark as discussed</button>
-                {/if}
-                {#if motion.stage === "discussed" || motion.stage === "proposed"}
-                    {#if !showOutcomeForm}
-                        <button class="btn-action" onclick={() => showOutcomeForm = true}>Record outcome</button>
-                    {:else}
-                        <div class="outcome-form">
-                            <select class="input select" bind:value={outcomeChoice}>
-                                <option value="passed">Passed</option>
-                                <option value="failed">Failed</option>
-                                <option value="withdrawn">Withdrawn</option>
-                                <option value="referred">Referred</option>
-                            </select>
-                            <input class="input" type="text" placeholder="Notes (optional)" bind:value={outcomeNote} />
-                            <div class="outcome-form-btns">
-                                <button class="btn-primary" onclick={doRecordOutcome} disabled={submittingOutcome}>
-                                    {submittingOutcome ? "Saving…" : "Save outcome"}
-                                </button>
-                                <button class="btn-ghost" onclick={() => showOutcomeForm = false}>Cancel</button>
-                            </div>
+                {#if !showOutcomeForm}
+                    <button class="btn-action" onclick={() => showOutcomeForm = true}>Record outcome</button>
+                {:else}
+                    <div class="outcome-form">
+                        <select class="input select" bind:value={outcomeChoice}>
+                            <option value="passed">Passed</option>
+                            <option value="failed">Failed</option>
+                            <option value="withdrawn">Withdrawn</option>
+                            <option value="referred">Referred</option>
+                        </select>
+                        <input class="input" type="text" placeholder="Notes (optional)" bind:value={outcomeNote} />
+                        <div class="outcome-form-btns">
+                            <button class="btn-primary" onclick={doRecordOutcome} disabled={submittingOutcome}>
+                                {submittingOutcome ? "Saving…" : "Save outcome"}
+                            </button>
+                            <button class="btn-ghost" onclick={() => showOutcomeForm = false}>Cancel</button>
                         </div>
-                    {/if}
+                    </div>
                 {/if}
             </div>
         {/if}

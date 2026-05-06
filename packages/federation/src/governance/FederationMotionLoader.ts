@@ -5,3 +5,4 @@ export class FederationMotionLoader extends BaseLoader<FederationMotionData, Fed
     protected serialize(m: FederationMotion): FederationMotionData   { return m.toData(); }
     protected deserialize(d: FederationMotionData): FederationMotion { return FederationMotion.fromData(d); }
 }
+

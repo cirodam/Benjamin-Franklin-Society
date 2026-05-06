@@ -25,7 +25,7 @@
             getConstitution().then(c => { constitution = c; }).catch(() => {});
         } else if ((kind === "suspend-member" || kind === "reinstate-member") && !persons.length) {
             listPersons().then(p => { persons = p; }).catch(() => {});
-        } else if (kind === "remove-role" && !pools.length) {
+        } else if (kind === "remove-pool" && !pools.length) {
             listPools().then(p => { pools = p; }).catch(() => {});
         } else if (kind === "accept-nomination" && !nominations.length) {
             listNominations().then(ns => { nominations = ns.filter(n => n.status === "pending"); }).catch(() => {});
@@ -175,11 +175,11 @@
             }
         } else if (kind === "suspend-member" || kind === "reinstate-member") {
             payload = selectedPersonId ? { personId: selectedPersonId } : {};
-        } else if (kind === "add-role") {
+        } else if (kind === "add-pool") {
             const name = roleName.trim();
             const desc = roleDesc.trim();
             payload = name ? { name, ...(desc ? { description: desc } : {}) } : {};
-        } else if (kind === "remove-role") {
+        } else if (kind === "remove-pool") {
             payload = selectedPoolId ? { poolId: selectedPoolId } : {};
         } else if (kind === "accept-nomination") {
             payload = nominationId ? { nominationId } : {};
@@ -375,10 +375,10 @@
             {/each}
         </select>
     {/if}
-{:else if kind === "add-role"}
+{:else if kind === "add-pool"}
     <input class="input" type="text" placeholder="Pool name" bind:value={roleName} />
     <textarea class="input textarea" placeholder="Description (optional)" bind:value={roleDesc} rows="2"></textarea>
-{:else if kind === "remove-role"}
+{:else if kind === "remove-pool"}
     {#if !pools.length}
         <p class="hint">Loading pools…</p>
     {:else}

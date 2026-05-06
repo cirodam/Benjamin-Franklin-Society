@@ -11,7 +11,7 @@ function toMotionDto(m: Motion) {
     const { proposerId: _pid, ...rest } = data as typeof data & { proposerId?: unknown };
     return {
         ...rest,
-        votes:    data.votes.map(({ personId: _vpid, ...v }) => v),
+        votes:    data.votes.map(({ voterId: _vpid, ...v }) => v),
         comments: data.comments.map(({ authorId: _acid, ...c }) => c),
     };
 }

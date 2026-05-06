@@ -1,4 +1,5 @@
 import { randomUUID } from "crypto";
+import { Authority } from "./Authority.js";
 
 /**
  * A LeaderPool is a named group of members who collectively govern
@@ -6,20 +7,24 @@ import { randomUUID } from "crypto";
  *
  * Membership is stored as a flat list of personIds. The service layer resolves
  * these to Person objects when needed.
+ *
+ * LeaderPool extends Authority so it can be used directly as an authority
+ * without a separate companion record.
  */
-export class LeaderPool {
-    readonly id: string;
-    readonly name: string;
-    readonly description: string;
+export class LeaderPool extends Authority {
+    readonly kind = "pool" as const;
     readonly createdAt: Date;
 
-    mandate:   string = "";
+    mandate:   string   = "";
     personIds: string[] = [];
 
-    constructor(name: string, description: string = "", id?: string) {
-        this.id = id ?? randomUUID();
-        this.name = name;
-        this.description = description;
+    constructor(
+        id:                string = randomUUID(),
+        name:              string,
+        defaultVoteRuleId  = "simple-majority",
+        description        = "",
+    ) {
+        super(id, name, defaultVoteRuleId, description);
         this.createdAt = new Date();
     }
 

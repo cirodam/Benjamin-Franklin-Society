@@ -1,15 +1,7 @@
-import { CommunityDb } from "../CommunityDb.js";
 import { PersonService } from "../person/PersonService.js";
 import { DomainService } from "../DomainService.js";
 import { AuthorityLoader } from "./AuthorityLoader.js";
-import { type Authority, isPoolAuthorityId, poolIdFromAuthorityId } from "@ecf/core";
-
-const ASSEMBLY_KEY = "assembly_term";
-
-interface AssemblyTermRecord {
-    termStartDate: string;
-    memberIds:     string[];
-}
+import { type Authority, Assembly, Committee, LeaderPool, MEMBERSHIP_AUTHORITY, REFERENDUM_AUTHORITY } from "@ecf/core";
 
 export class AuthorityService {
     private static instance: AuthorityService;
@@ -19,12 +11,21 @@ export class AuthorityService {
         return AuthorityService.instance;
     }
 
+    /** All authorities: virtual membership + referendum + stored authorities + leadership pools. */
     getAll(): Authority[] {
-        return AuthorityLoader.getInstance().loadAll();
+        return [
+            MEMBERSHIP_AUTHORITY,
+            REFERENDUM_AUTHORITY,
+            ...AuthorityLoader.getInstance().loadAll(),
+            ...DomainService.getInstance().getPools(),
+        ];
     }
 
     get(id: string): Authority | undefined {
-        return AuthorityLoader.getInstance().load(id);
+        if (id === "membership") return MEMBERSHIP_AUTHORITY;
+        if (id === "referendum") return REFERENDUM_AUTHORITY;
+        return AuthorityLoader.getInstance().load(id)
+            ?? DomainService.getInstance().getPool(id);
     }
 
     /**
@@ -32,33 +33,19 @@ export class AuthorityService {
      * Returns an empty array if the authority is unknown.
      */
     getMemberIds(authorityId: string): string[] {
-        switch (authorityId) {
-            case "assembly":
-                return this.assemblyMemberIds();
-            case "membership":
-                return PersonService.getInstance().getAll()
-                    .filter(p => !p.disabled)
-                    .map(p => p.id);
-            default:
-                if (isPoolAuthorityId(authorityId)) {
-                    const poolId = poolIdFromAuthorityId(authorityId);
-                    const pool   = DomainService.getInstance().getPool(poolId);
-                    return pool?.personIds ?? [];
-                }
-                return [];
+        const authority = this.get(authorityId);
+        if (authority instanceof Assembly)   return authority.memberIds;
+        if (authority instanceof Committee)  return authority.memberIds;
+        if (authority instanceof LeaderPool) return authority.personIds;
+        if (authorityId === "membership" || authorityId === "referendum") {
+            return PersonService.getInstance().getAll()
+                .filter(p => !p.disabled)
+                .map(p => p.id);
         }
+        return [];
     }
 
     isMember(authorityId: string, personId: string): boolean {
         return this.getMemberIds(authorityId).includes(personId);
-    }
-
-    private assemblyMemberIds(): string[] {
-        const db  = CommunityDb.getInstance().db;
-        const row = db.prepare("SELECT data FROM singleton_records WHERE key = ?")
-            .get(ASSEMBLY_KEY) as { data: string } | undefined;
-        if (!row) return [];
-        const term = JSON.parse(row.data) as AssemblyTermRecord;
-        return term.memberIds ?? [];
     }
 }

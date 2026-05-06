@@ -231,7 +231,7 @@
             {#if effectKinds.length}
                 <select class="input-sm add-input" bind:value={selectedKind} onchange={() => { effectPayload = {}; }}>
                     <option value="">No automated effect</option>
-                    {#each effectKinds.filter(k => !k.bodyHint || k.bodyHint === "assembly") as k (k.kind)}
+                    {#each effectKinds.filter(k => !k.authorityId || k.authorityId === "assembly") as k (k.kind)}
                         <option value={k.kind}>{k.label}</option>
                     {/each}
                 </select>

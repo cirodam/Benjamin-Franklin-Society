@@ -29,7 +29,7 @@ export class FederationMotionService {
         this.loader = loader;
         this.motions = new Map(loader.loadAll().map(m => [m.id, m]));
         for (const m of this.motions.values()) {
-            if (m.isReferendum && m.stage === "voting" && m.votingClosesAt) {
+            if (m.authorityId === "referendum" && m.stage === "voting" && m.votingClosesAt) {
                 if (new Date() > new Date(m.votingClosesAt)) {
                     this.resolveByDeadline(m);
                 }
@@ -43,20 +43,20 @@ export class FederationMotionService {
     get(id: string): FederationMotion | undefined { return this.motions.get(id); }
 
     getByBody(body: string): FederationMotion[] {
-        return this.getAll().filter(m => m.body === body);
+        return this.getAll().filter(m => m.authorityId === body);
     }
 
     // ── Create ────────────────────────────────────────────────────────────────
 
     create(opts: {
-        body:             string;
-        title:            string;
-        description:      string;
-        proposerMemberId: string;
-        proposerHandle:   string;
-        parentId?:        string;
+        body:            string;
+        title:           string;
+        description:     string;
+        proposerId:      string;
+        proposerHandle:  string;
+        parentId?:       string;
     }): FederationMotion {
-        const motion = new FederationMotion(opts);
+        const motion = new FederationMotion({ ...opts, authorityId: opts.body });
         this.motions.set(motion.id, motion);
         this.loader.save(motion);
         return motion;
@@ -70,9 +70,9 @@ export class FederationMotionService {
         thresholdKey: FederationVoteThresholdKey = "thresholdSimpleMajority",
     ): FederationMotion {
         const m = this.require(motionId);
-        if (!m.isReferendum)           throw new Error("Only referendum motions use deliberation");
+        if (m.authorityId !== "referendum")           throw new Error("Only referendum motions use deliberation");
         if (m.stage !== "draft")       throw new Error("Motion is not a draft");
-        if (m.proposerMemberId !== callerId) throw new Error("Only the proposer can submit for deliberation");
+        if (m.proposerId !== callerId) throw new Error("Only the proposer can submit for deliberation");
 
         const now = new Date();
         const votingOpens = new Date(now);
@@ -88,7 +88,7 @@ export class FederationMotionService {
 
     openVoting(motionId: string): FederationMotion {
         const m = this.require(motionId);
-        if (!m.isReferendum)            throw new Error("Only referendum motions use this transition");
+        if (m.authorityId !== "referendum")            throw new Error("Only referendum motions use this transition");
         if (m.stage !== "deliberating") throw new Error("Motion is not in deliberation");
         if (m.pendingAmendmentIds.length > 0) throw new Error("Pending amendments must resolve first");
         if (m.votingOpensAt && new Date() < new Date(m.votingOpensAt)) {
@@ -105,21 +105,21 @@ export class FederationMotionService {
     }
 
     castVote(
-        motionId:         string,
-        communityMemberId: string,
-        communityHandle:  string,
-        vote:             "approve" | "reject" | "abstain",
+        motionId:        string,
+        voterId:         string,
+        communityHandle: string,
+        vote:            "approve" | "reject" | "abstain",
     ): FederationMotion {
         const m = this.require(motionId);
-        if (!m.isReferendum)      throw new Error("Use clerk actions for assembly/council motions");
+        if (m.authorityId !== "referendum") throw new Error("Use clerk actions for assembly/council motions");
         if (m.stage !== "voting") throw new Error("Motion is not in voting stage");
         if (m.votingClosesAt && new Date() > new Date(m.votingClosesAt)) {
             this.resolveByDeadline(m);
             throw new Error("Voting period has closed");
         }
-        if (m.hasVoted(communityMemberId)) throw new Error("This community has already voted");
+        if (m.hasVoted(voterId)) throw new Error("This community has already voted");
 
-        m.votes.push({ communityMemberId, communityHandle, vote, votedAt: new Date().toISOString() });
+        m.votes.push({ voterId, voterHandle: communityHandle, vote, votedAt: new Date().toISOString() });
         this.loader.save(m);
         this.checkReferendumResolution(m);
         return m;
@@ -136,11 +136,13 @@ export class FederationMotionService {
             throw new Error("Comments can only be added during deliberation or voting");
         }
         m.comments.push({
-            id: randomUUID(),
-            communityHandle,
+            id:          randomUUID(),
+            authorId:    "",
             authorHandle,
-            body: body.trim(),
-            createdAt: new Date().toISOString(),
+            groupHandle: communityHandle,
+            body:        body.trim(),
+            kind:        "general",
+            createdAt:   new Date().toISOString(),
         });
         this.loader.save(m);
         return m;
@@ -150,9 +152,9 @@ export class FederationMotionService {
 
     markDiscussed(motionId: string): FederationMotion {
         const m = this.require(motionId);
-        if (m.isReferendum)         throw new Error("Use referendum lifecycle for referendum motions");
-        if (m.stage !== "proposed") throw new Error("Motion must be in 'proposed' stage");
-        m.stage = "discussed";
+        if (m.authorityId === "referendum") throw new Error("Use referendum lifecycle for referendum motions");
+        if (m.stage !== ("proposed" as string)) throw new Error("Motion must be in 'proposed' stage");
+        (m as { stage: string }).stage = "discussed";
         this.loader.save(m);
         return m;
     }
@@ -163,7 +165,7 @@ export class FederationMotionService {
         outcomeNote = "",
     ): FederationMotion {
         const m = this.require(motionId);
-        if (m.isReferendum)        throw new Error("Use referendum lifecycle for referendum motions");
+        if (m.authorityId === "referendum") throw new Error("Use referendum lifecycle for referendum motions");
         if (m.stage === "resolved") throw new Error("Motion already resolved");
 
         m.outcome     = outcome;
@@ -176,7 +178,7 @@ export class FederationMotionService {
 
     withdraw(motionId: string, callerId: string): FederationMotion {
         const m = this.require(motionId);
-        if (m.proposerMemberId !== callerId) throw new Error("Only the proposer can withdraw");
+        if (m.proposerId !== callerId) throw new Error("Only the proposer can withdraw");
         if (m.isResolved)                    throw new Error("Motion already resolved");
         m.stage      = "resolved";
         m.outcome    = "withdrawn";

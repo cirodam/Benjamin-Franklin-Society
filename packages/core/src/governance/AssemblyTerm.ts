@@ -1,41 +1,45 @@
 import { randomUUID } from "crypto";
 
-// ── Seat interface ────────────────────────────────────────────────────────────
+// ── Seat ─────────────────────────────────────────────────────────────────────
 
 /**
- * Minimum shape every seat type must satisfy.
- * Subclasses extend this with their identity fields.
+ * One seat in an assembly term.
+ *
+ * At community level: populated with `personId` + `personHandle` by sortition draw.
+ * At federation level: populated with `communityId` + `communityHandle`; the
+ * `personHandle` field holds the nominated delegate (null = seat is vacant).
+ *
+ * The only structural difference between levels is *where members come from*,
+ * not what a seat is.
  */
-export interface AssemblySeat {
-    /** ISO 8601 — when this delegate was seated (null = vacant) */
-    seatedAt: string | null;
+export interface AssemblyMember {
+    seatedAt:         string | null;   // null = vacant
+    personHandle:     string | null;   // the person occupying the seat; null = vacant
+    personName?:      string | null;   // display name (optional)
+    personId?:        string;          // local person record ID (community-level)
+    communityId?:     string;          // which community this seat represents (federation-level)
+    communityHandle?: string;          // community handle (federation-level)
 }
 
 // ── Data shape ────────────────────────────────────────────────────────────────
 
-export interface AssemblyTermData<TSeat extends AssemblySeat> {
+export interface AssemblyTermData {
     id:         string;
     termNumber: number;
     startedAt:  string;
     endsAt:     string | null;
-    seats:      TSeat[];
+    seats:      AssemblyMember[];
     motionIds:  string[];
 }
 
-// ── Base class ────────────────────────────────────────────────────────────────
+// ── Class ─────────────────────────────────────────────────────────────────────
 
-/**
- * Abstract base for assembly terms at any governance level.
- *
- * Subclasses supply the concrete seat type `TSeat` and a key that identifies
- * a seat uniquely (e.g. `communityMemberId` at federation level).
- */
-export abstract class AssemblyTerm<TSeat extends AssemblySeat> {
+export class AssemblyTerm {
     readonly id:         string;
     readonly termNumber: number;
     readonly startedAt:  string;
-    endsAt:   string | null;
-    seats:    TSeat[];
+    endsAt:    string | null;
+    seats:     AssemblyMember[];
     motionIds: string[];
 
     constructor(opts: {
@@ -43,7 +47,7 @@ export abstract class AssemblyTerm<TSeat extends AssemblySeat> {
         id?:        string;
         startedAt?: string;
         endsAt?:    string | null;
-        seats?:     TSeat[];
+        seats?:     AssemblyMember[];
         motionIds?: string[];
     }) {
         this.id         = opts.id        ?? randomUUID();
@@ -54,15 +58,15 @@ export abstract class AssemblyTerm<TSeat extends AssemblySeat> {
         this.motionIds  = opts.motionIds ?? [];
     }
 
-    get seatedDelegates(): TSeat[] {
+    get seatedMembers(): AssemblyMember[] {
         return this.seats.filter(s => s.seatedAt !== null);
     }
 
-    get vacantSeats(): TSeat[] {
+    get vacantSeats(): AssemblyMember[] {
         return this.seats.filter(s => s.seatedAt === null);
     }
 
-    protected baseData(): AssemblyTermData<TSeat> {
+    toData(): AssemblyTermData {
         return {
             id:         this.id,
             termNumber: this.termNumber,
@@ -72,4 +76,16 @@ export abstract class AssemblyTerm<TSeat extends AssemblySeat> {
             motionIds:  this.motionIds,
         };
     }
+
+    static fromData(d: AssemblyTermData): AssemblyTerm {
+        return new AssemblyTerm({
+            id:         d.id,
+            termNumber: d.termNumber,
+            startedAt:  d.startedAt,
+            endsAt:     d.endsAt,
+            seats:      d.seats    ?? [],
+            motionIds:  d.motionIds ?? [],
+        });
+    }
 }
+

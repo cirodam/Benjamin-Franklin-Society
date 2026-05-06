@@ -1280,7 +1280,7 @@ export async function listExpiringRoles(days = 60): Promise<ExpiringRoleDto[]> {
 
 // ── Motions ───────────────────────────────────────────────────────────────────
 
-export type MotionStage   = "draft" | "deliberating" | "voting" | "resolved" | "proposed" | "discussed" | "voted";
+export type MotionStage   = "draft" | "deliberating" | "voting" | "resolved";
 export type MotionOutcome = "passed" | "failed" | "withdrawn" | "referred";
 
 // ── Authorities ───────────────────────────────────────────────────────────────
@@ -1336,7 +1336,7 @@ export interface MotionVote {
 export interface MotionEffectKind {
     kind:      string;
     label:     string;
-    bodyHint?: string;
+    authorityId?: string;
 }
 
 export interface MotionDto {

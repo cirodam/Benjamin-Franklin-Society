@@ -11,10 +11,10 @@ export type EffectHandler       = (ctx: EffectContext) => void;
 export type PayloadValidator    = (raw: unknown) => string | null; // null = valid
 
 export interface EffectDefinition {
-    label:     string;          // human-readable, shown in UI
-    bodyHint?: "referendum" | "assembly"; // advisory only — not enforced
-    validate:  PayloadValidator;
-    handler:   EffectHandler;
+    label:       string;          // human-readable, shown in UI
+    authorityId?: string;         // advisory: suggested authority to route this motion to
+    validate:    PayloadValidator;
+    handler:     EffectHandler;
 }
 
 // ── Registry ──────────────────────────────────────────────────────────────────
@@ -31,11 +31,11 @@ class EffectRegistry {
     }
 
     /** Returns all registered kinds for display in the UI. */
-    listKinds(): { kind: string; label: string; bodyHint?: string }[] {
+    listKinds(): { kind: string; label: string; authorityId?: string }[] {
         return [...this.defs.entries()].map(([kind, def]) => ({
             kind,
-            label:    def.label,
-            bodyHint: def.bodyHint,
+            label:       def.label,
+            authorityId: def.authorityId,
         }));
     }
 
