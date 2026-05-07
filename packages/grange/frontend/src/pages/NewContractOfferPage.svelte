@@ -181,7 +181,7 @@
     <h1>Submit Contract Offer</h1>
     <p class="subtitle">
         Offer to supply specific crops against an open needs projection.
-        Stewards will review and approve or decline your offer.
+        Coordinators will review and approve or decline your offer.
     </p>
 
     {#if loading}
@@ -190,7 +190,7 @@
         <div class="notice">
             <strong>No eligible farms found.</strong>
             Your account isn't listed as an operator on any eligible farm association.
-            Contact a steward to register your farm or update its status.
+            Contact a coordinator to register your farm or update its status.
         </div>
     {:else}
     <form onsubmit={submit}>
@@ -307,7 +307,7 @@
         <section>
             <h2>Payment terms</h2>
             <p class="help">
-                Propose the kin payment you're seeking. The steward may negotiate before approval.
+                Propose the kin payment you're seeking. The coordinator may negotiate before approval.
                 The signal price × your estimated yield is a reasonable starting point.
             </p>
             {#if selectedProj && includedRows.length > 0}
@@ -341,7 +341,7 @@
         <!-- Notes -->
         <section>
             <h2>Notes <span class="opt">(optional)</span></h2>
-            <textarea rows="3" placeholder="Any additional context for stewards — soil conditions, planned practices, constraints…" bind:value={notes}></textarea>
+            <textarea rows="3" placeholder="Any additional context for coordinators — soil conditions, planned practices, constraints…" bind:value={notes}></textarea>
         </section>
 
         {#if error}

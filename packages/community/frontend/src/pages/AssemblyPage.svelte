@@ -51,7 +51,7 @@
         } finally { addingMotion = false; }
     }
 
-    const isSteward = $derived(($session as any)?.isSteward ?? false);
+    const isAdmin = $derived(($session as any)?.isAdmin ?? false);
 
     async function load() {
         loading = true; error = "";
@@ -180,9 +180,9 @@
             {/each}
         </div>
 
-        <!-- Steward draw controls -->
-        {#if isSteward}
-            <div class="steward-bar">
+        <!-- Admin draw controls -->
+        {#if isAdmin}
+            <div class="admin-bar">
                 {#if !showDraw}
                     <button class="btn-sm btn-primary-sm" onclick={() => { showDraw = true; drawError = ""; }}>Draw new term</button>
                     {#if assembly.termStartDate}
@@ -354,8 +354,8 @@
         background: #cbd5e1;
     }
 
-    /* ── Steward draw bar ────────────────────────────────────────────────────── */
-    .steward-bar { display: flex; gap: 0.5rem; align-items: flex-start; flex-wrap: wrap; }
+    /* ── Admin draw bar ────────────────────────────────────────────────────── */
+    .admin-bar { display: flex; gap: 0.5rem; align-items: flex-start; flex-wrap: wrap; }
 
     .draw-form {
         display: flex; flex-direction: column; gap: 0.5rem;

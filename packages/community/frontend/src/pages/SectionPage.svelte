@@ -17,7 +17,7 @@
     import VoteRuleDetails from "../components/VoteRuleDetails.svelte";
 
     const ctx         = $derived($selectedSection);
-    const isSteward   = $derived($session?.isSteward ?? false);
+    const isAdmin   = $derived($session?.isAdmin ?? false);
 
     // Loaded data
     let constitutionDoc: GoverningDocumentDto | null = $state(null);
@@ -215,7 +215,7 @@
                         {section.body}
                     {/if}
                 </div>
-                {#if isSteward && ctx?.docId !== "charter"}
+                {#if isAdmin && ctx?.docId !== "charter"}
                     <button class="edit-link" onclick={startEdit}>Edit prose</button>
                 {/if}
             {/if}

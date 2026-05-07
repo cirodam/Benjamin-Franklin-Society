@@ -285,7 +285,7 @@
         }
     }
 
-    const isSteward = $derived($session?.isSteward ?? false);
+    const isAdmin = $derived($session?.isAdmin ?? false);
     const myHandle  = $derived($session?.handle ?? "");
     const today     = $derived(isoDate(new Date()));
 </script>
@@ -297,7 +297,7 @@
             <h2 class="page-title">Schedule</h2>
             <p class="page-subtitle">Role schedules and one-off shifts by unit</p>
         </div>
-        {#if isSteward}
+        {#if isAdmin}
             <button class="add-btn" onclick={openForm}>+ Add shift</button>
         {/if}
     </div>
@@ -433,7 +433,7 @@
                                     {:else if shift.assignedHandle === myHandle}
                                         <button class="unclaim-btn" onclick={() => handleUnclaim(shift)}>Drop shift</button>
                                     {/if}
-                                    {#if isSteward}
+                                    {#if isAdmin}
                                         <button class="delete-btn" onclick={() => handleDelete(shift)}>✕</button>
                                     {/if}
                                 </div>

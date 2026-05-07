@@ -30,7 +30,7 @@
         "add-pool-member":          { icon: "◉",  desc: "Add an existing member directly to a leadership pool via petition." },
     };
 
-    const isSteward = $derived($session?.isSteward ?? false);
+    const isAdmin = $derived($session?.isAdmin ?? false);
 
     let effects     = $state<MotionEffectKind[]>([]);
     let authorities = $state<AuthorityDto[]>([]);

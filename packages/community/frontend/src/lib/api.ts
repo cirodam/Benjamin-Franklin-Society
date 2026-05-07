@@ -29,8 +29,8 @@ export interface PersonDto {
     phone: string | null;
     disabled: boolean;
     retired: boolean;
-    steward: boolean;
-    isSteward: boolean;
+    admin: boolean;
+    isAdmin: boolean;
     joinDate: string;
     hasPassword: boolean;
     mustChangePassword?: boolean;
@@ -414,20 +414,20 @@ export async function updatePerson(handle: string, patch: { phone?: string }): P
     return res.json() as Promise<PersonDto>;
 }
 
-export async function grantSteward(handle: string): Promise<PersonDto> {
-    const res = await apiFetch(`/api/persons/${encodeURIComponent(handle)}/steward`, { method: "POST" });
+export async function grantAdmin(handle: string): Promise<PersonDto> {
+    const res = await apiFetch(`/api/persons/${encodeURIComponent(handle)}/admin`, { method: "POST" });
     if (!res.ok) {
         const body = await res.json().catch(() => ({})) as { error?: string };
-        throw new Error(body.error ?? "Failed to grant stewardship");
+        throw new Error(body.error ?? "Failed to grant admin access");
     }
     return res.json() as Promise<PersonDto>;
 }
 
-export async function revokeSteward(handle: string): Promise<PersonDto> {
-    const res = await apiFetch(`/api/persons/${encodeURIComponent(handle)}/steward`, { method: "DELETE" });
+export async function revokeAdmin(handle: string): Promise<PersonDto> {
+    const res = await apiFetch(`/api/persons/${encodeURIComponent(handle)}/admin`, { method: "DELETE" });
     if (!res.ok) {
         const body = await res.json().catch(() => ({})) as { error?: string };
-        throw new Error(body.error ?? "Failed to revoke stewardship");
+        throw new Error(body.error ?? "Failed to revoke admin access");
     }
     return res.json() as Promise<PersonDto>;
 }
@@ -1667,3 +1667,54 @@ export async function removeCalendarRsvp(id: string, handle: string): Promise<Ca
     return res.json() as Promise<CalendarEventDto>;
 }
 
+
+
+// ── Desired State (debug) ─────────────────────────────────────────────────────
+
+export interface DesiredDomain {
+    id:          string;
+    name:        string;
+    description: string;
+    docId:       string;
+    sectionId:   string;
+    exists:      boolean;
+}
+
+export interface DesiredUnit {
+    domainId:    string;
+    unitType:    string;
+    name:        string;
+    description: string;
+    docId:       string;
+    sectionId:   string;
+}
+
+export interface DesiredPool {
+    id:         string;
+    name:       string;
+    voteRuleId: string;
+    mandate:    string;
+    docId:      string;
+    sectionId:  string;
+    exists:     boolean;
+}
+
+export interface DesiredLink {
+    poolId:    string;
+    domainId:  string;
+    docId:     string;
+    sectionId: string;
+}
+
+export interface DesiredStateDto {
+    domains: DesiredDomain[];
+    units:   DesiredUnit[];
+    pools:   DesiredPool[];
+    links:   DesiredLink[];
+}
+
+export async function getDesiredState(): Promise<DesiredStateDto> {
+    const res = await apiFetch("/api/debug/desired-state");
+    if (!res.ok) throw new Error("Failed to load desired state");
+    return res.json() as Promise<DesiredStateDto>;
+}

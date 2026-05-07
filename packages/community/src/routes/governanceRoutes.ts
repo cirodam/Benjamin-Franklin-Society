@@ -1,5 +1,5 @@
 import { Router, Request, Response } from "express";
-import { requireAuth, requireSteward } from "./middleware.js";
+import { requireAuth, requireAdmin } from "./middleware.js";
 import * as motions   from "./MotionController.js";
 import { DocumentLoader } from "../governance/DocumentLoader.js";
 import { AuthorityLoader } from "../governance/AuthorityLoader.js";
@@ -23,14 +23,14 @@ router.post(  "/motions/:id/deliberate",     requireAuth,    motions.submitForDe
  router.post(  "/motions/:id/vote",           requireAuth,    motions.castVote);
  router.post(  "/motions/:id/comment",        requireAuth,    motions.addComment);
  router.post(  "/motions/:id/dissent",        requireAuth,    motions.recordDissent);
- router.post(  "/motions/:id/discuss",        requireSteward, motions.submitDeliberation);
-router.post(  "/motions/:id/outcome",        requireSteward, motions.recordOutcome);
+ router.post(  "/motions/:id/discuss",        requireAdmin, motions.submitDeliberation);
+router.post(  "/motions/:id/outcome",        requireAdmin, motions.recordOutcome);
 router.delete("/motions/:id",                requireAuth,    motions.withdrawMotion);
 
 // PATCH /api/documents/constitution/parameters/:key
 // Body: { value: number | boolean }
 // Steward-only direct override — for experimental use.
-router.patch("/documents/constitution/parameters/:key", requireSteward, (req: Request, res: Response) => {
+router.patch("/documents/constitution/parameters/:key", requireAdmin, (req: Request, res: Response) => {
     const key = req.params.key as string;
     const { value } = (req.body ?? {}) as { value?: unknown };
     if (typeof value !== "number" && typeof value !== "boolean") {
@@ -48,7 +48,7 @@ router.patch("/documents/constitution/parameters/:key", requireSteward, (req: Re
 // PATCH /api/documents/constitution/sections/:sectionId
 // Body: { body: string }
 // Steward-only direct override of a section's prose text.
-router.patch("/documents/constitution/sections/:sectionId", requireSteward, (req: Request, res: Response) => {
+router.patch("/documents/constitution/sections/:sectionId", requireAdmin, (req: Request, res: Response) => {
     const sectionId = req.params.sectionId as string;
     const { body } = (req.body ?? {}) as { body?: unknown };
     if (typeof body !== "string" || !body.trim()) {
@@ -108,7 +108,7 @@ router.get("/bylaws/:id", (req: Request, res: Response) => {
     res.json(bylaw);
 });
 
-router.post("/bylaws", requireSteward, (req: Request, res: Response) => {
+router.post("/bylaws", requireAdmin, (req: Request, res: Response) => {
     const { title, preamble, authorityId, voteRuleId } = (req.body ?? {}) as { title?: string; preamble?: string; authorityId?: string; voteRuleId?: string };
     if (!title?.trim()) { res.status(400).json({ error: "title is required" }); return; }
     try {
@@ -118,7 +118,7 @@ router.post("/bylaws", requireSteward, (req: Request, res: Response) => {
     }
 });
 
-router.post("/bylaws/:id/articles", requireSteward, rejectCharter, (req: Request, res: Response) => {
+router.post("/bylaws/:id/articles", requireAdmin, rejectCharter, (req: Request, res: Response) => {
     const { number, title, preamble } = (req.body ?? {}) as { number?: string; title?: string; preamble?: string };
     if (!number?.trim() || !title?.trim()) { res.status(400).json({ error: "number and title are required" }); return; }
     try {
@@ -129,7 +129,7 @@ router.post("/bylaws/:id/articles", requireSteward, rejectCharter, (req: Request
     }
 });
 
-router.post("/bylaws/:id/articles/:number/sections", requireSteward, rejectCharter, (req: Request, res: Response) => {
+router.post("/bylaws/:id/articles/:number/sections", requireAdmin, rejectCharter, (req: Request, res: Response) => {
     const { sectionId, title, body, rationale, voteRuleId } = (req.body ?? {}) as { sectionId?: string; title?: string; body?: string; rationale?: string; voteRuleId?: string | null };
     if (!sectionId?.trim() || !body?.trim()) { res.status(400).json({ error: "sectionId and body are required" }); return; }
     try {
@@ -140,7 +140,7 @@ router.post("/bylaws/:id/articles/:number/sections", requireSteward, rejectChart
     }
 });
 
-router.patch("/bylaws/:id/sections/:sectionId", requireSteward, rejectCharter, (req: Request, res: Response) => {
+router.patch("/bylaws/:id/sections/:sectionId", requireAdmin, rejectCharter, (req: Request, res: Response) => {
     const { body } = (req.body ?? {}) as { body?: string };
     if (!body?.trim()) { res.status(400).json({ error: "body is required" }); return; }
     try {
@@ -151,7 +151,7 @@ router.patch("/bylaws/:id/sections/:sectionId", requireSteward, rejectCharter, (
     }
 });
 
-router.delete("/bylaws/:id", requireSteward, rejectCharter, (req: Request, res: Response) => {
+router.delete("/bylaws/:id", requireAdmin, rejectCharter, (req: Request, res: Response) => {
     if (!bylaws.load(req.params.id as string)) { res.status(404).json({ error: "Bylaw not found" }); return; }
     bylaws.delete(req.params.id as string);
     res.status(204).end();
@@ -205,7 +205,7 @@ router.get("/assembly", (_req: Request, res: Response) => {
 
 // POST /api/governance/assembly/draw  (steward only)
 // Randomly draws a new assembly term from eligible (non-disabled, adult) members.
-router.post("/assembly/draw", requireSteward, (req: Request, res: Response) => {
+router.post("/assembly/draw", requireAdmin, (req: Request, res: Response) => {
     const { termStartDate } = (req.body ?? {}) as { termStartDate?: string };
     const docs = new DocumentLoader();
     const cp = <T extends number | boolean>(k: string) => docs.getParam<T>("constitution", k);
@@ -275,13 +275,87 @@ router.post("/assembly/draw", requireSteward, (req: Request, res: Response) => {
 });
 
 // DELETE /api/governance/assembly  (steward only) — clear current term
-router.delete("/assembly", requireSteward, (_req: Request, res: Response) => {
+router.delete("/assembly", requireAdmin, (_req: Request, res: Response) => {
     const asm = loadAssembly();
     asm.memberIds     = [];
     asm.termStartedAt = null;
     asm.termEndsAt    = null;
     AuthorityLoader.getInstance().save(asm);
     res.status(204).end();
+});
+
+// GET /api/debug/desired-state  (steward only)
+// Read-only: parses all governing documents and returns the structural desired
+// state (domains, units, pools, pool-domain links) without touching the DB.
+// Useful for troubleshooting the governance-as-code reconciler.
+import { DomainService } from "../DomainService.js";
+router.get("/debug/desired-state", requireAdmin, (_req: Request, res: Response) => {
+    const docs = new DocumentLoader().loadAll();
+    const domainSvc = DomainService.getInstance();
+
+    type DesiredDomain = { id: string; name: string; description: string; docId: string; sectionId: string; exists: boolean };
+    type DesiredUnit   = { domainId: string; unitType: string; name: string; description: string; docId: string; sectionId: string };
+    type DesiredPool   = { id: string; name: string; voteRuleId: string; mandate: string; docId: string; sectionId: string; exists: boolean };
+    type DesiredLink   = { poolId: string; domainId: string; docId: string; sectionId: string };
+
+    const domains: DesiredDomain[] = [];
+    const units:   DesiredUnit[]   = [];
+    const pools:   DesiredPool[]   = [];
+    const links:   DesiredLink[]   = [];
+
+    for (const doc of docs) {
+        for (const article of doc.articles) {
+            for (const section of article.sections) {
+                for (const directive of section.directives ?? []) {
+                    const parsed = parseDirective(directive);
+                    if (!parsed) continue;
+
+                    if (directive.verb === "domain.define") {
+                        const d = parsed as { id: string };
+                        domains.push({
+                            id:          d.id,
+                            name:        section.title ?? d.id,
+                            description: section.body,
+                            docId:       doc.id,
+                            sectionId:   section.id,
+                            exists:      !!domainSvc.getDomain(d.id),
+                        });
+                    } else if (directive.verb === "domain.unit") {
+                        const d = parsed as { domainId: string; unitType: string };
+                        units.push({
+                            domainId:    d.domainId,
+                            unitType:    d.unitType,
+                            name:        section.title ?? d.unitType,
+                            description: section.body,
+                            docId:       doc.id,
+                            sectionId:   section.id,
+                        });
+                    } else if (directive.verb === "pool.define") {
+                        const d = parsed as { id: string; voteRuleId: string };
+                        pools.push({
+                            id:         d.id,
+                            name:       section.title ?? d.id,
+                            voteRuleId: d.voteRuleId,
+                            mandate:    section.rationale ?? "",
+                            docId:      doc.id,
+                            sectionId:  section.id,
+                            exists:     domainSvc.getPools().some(p => p.id === d.id),
+                        });
+                    } else if (directive.verb === "pool.governs") {
+                        const d = parsed as { poolId: string; domainId: string };
+                        links.push({
+                            poolId:    d.poolId,
+                            domainId:  d.domainId,
+                            docId:     doc.id,
+                            sectionId: section.id,
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    res.json({ domains, units, pools, links });
 });
 
 export default router;

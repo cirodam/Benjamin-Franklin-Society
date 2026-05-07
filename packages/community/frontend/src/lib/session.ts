@@ -8,7 +8,7 @@ export interface SessionData {
     handle: string;
     phone: string | null;
     hasPassword: boolean;
-    isSteward: boolean;
+    isAdmin: boolean;
     /** base64url-encoded PersonCredential — attached as Bearer token on every API call. */
     token: string;
 }
@@ -44,7 +44,7 @@ function createSessionStore() {
                 handle:      person.handle,
                 phone:       person.phone,
                 hasPassword: person.hasPassword,
-                isSteward:   person.isSteward,
+                isAdmin:     person.isAdmin,
                 token:       person.token,
             };
             localStorage.setItem(SESSION_KEY, JSON.stringify(data));
@@ -73,7 +73,7 @@ export const session = createSessionStore();
 /** Set to true when any API call returns 401, so the login page can explain why. */
 export const sessionExpired = writable(false);
 
-export type Page = "dashboard" | "directory" | "constitution" | "settings" | "domains" | "domain" | "unit" | "leadership" | "assembly" | "pool" | "motion" | "applications" | "charter" | "budget" | "associations" | "association" | "add-person" | "locations" | "proposals" | "proposal" | "nodes" | "central-bank" | "social-insurance" | "vacancies" | "vacancy-detail" | "connections" | "schedule" | "documents" | "bylaw" | "section" | "timeline" | "calendar" | "registry" | "role-type" | "unit-type-detail" | "propose" | "authority";
+export type Page = "dashboard" | "directory" | "constitution" | "settings" | "domains" | "domain" | "unit" | "leadership" | "assembly" | "pool" | "motion" | "applications" | "charter" | "budget" | "associations" | "association" | "add-person" | "locations" | "proposals" | "proposal" | "nodes" | "central-bank" | "social-insurance" | "vacancies" | "vacancy-detail" | "connections" | "schedule" | "documents" | "bylaw" | "section" | "timeline" | "calendar" | "registry" | "role-type" | "unit-type-detail" | "propose" | "authority" | "desired-state";
 
 function createPageStore() {
     const { subscribe, set } = writable<Page>("dashboard");

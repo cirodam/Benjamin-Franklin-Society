@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { listPersons, getPerson, setPassword, grantSteward, revokeSteward, grantPersonApp, revokePersonApp } from "../lib/api.js";
+    import { listPersons, getPerson, setPassword, grantAdmin, revokeAdmin, grantPersonApp, revokePersonApp } from "../lib/api.js";
     import type { PersonDto } from "../lib/api.js";
     import { session } from "../lib/session.js";
 
@@ -19,8 +19,8 @@
     let resetError = $state("");
     let resetOk    = false;
     let resetting  = $state(false);
-    let stewardError = $state("");
-    let stewardWorking = $state(false);
+    let adminError = $state("");
+    let adminWorking = $state(false);
 
     // ── App access state ──────────────────────────────────────────────────────
     let appAccessWorking = $state(false);
@@ -62,7 +62,7 @@
         newPass    = "";
         resetError = "";
         resetOk    = false;
-        stewardError = "";
+        adminError = "";
         if (newHandle) {
             detailLoading = true;
             try { expandedDetail = await getPerson(newHandle); } catch { /* keep null */ }
@@ -84,27 +84,27 @@
         }
     }
 
-    async function doGrantSteward(handle: string) {
-        stewardWorking = true; stewardError = "";
+    async function doGrantAdmin(handle: string) {
+        adminWorking = true; adminError = "";
         try {
-            const updated = await grantSteward(handle);
+            const updated = await grantAdmin(handle);
             members = members.map(m => m.handle === handle ? updated : m);
         } catch (e) {
-            stewardError = e instanceof Error ? e.message : "Failed to grant stewardship";
+            adminError = e instanceof Error ? e.message : "Failed to grant admin access";
         } finally {
-            stewardWorking = false;
+            adminWorking = false;
         }
     }
 
-    async function doRevokeSteward(handle: string) {
-        stewardWorking = true; stewardError = "";
+    async function doRevokeAdmin(handle: string) {
+        adminWorking = true; adminError = "";
         try {
-            const updated = await revokeSteward(handle);
+            const updated = await revokeAdmin(handle);
             members = members.map(m => m.handle === handle ? updated : m);
         } catch (e) {
-            stewardError = e instanceof Error ? e.message : "Failed to revoke stewardship";
+            adminError = e instanceof Error ? e.message : "Failed to revoke admin access";
         } finally {
-            stewardWorking = false;
+            adminWorking = false;
         }
     }
 
@@ -167,8 +167,8 @@
                             <span class="member-name">{m.firstName} {m.lastName}</span>
                             <span class="member-handle">{m.handle}</span>
                         </div>
-                        {#if m.isSteward}
-                            <span class="badge steward">Steward</span>
+                        {#if m.isAdmin}
+                            <span class="badge admin">Admin</span>
                         {/if}
                         {#if m.retired}
                             <span class="badge retired">Retired</span>
@@ -190,7 +190,44 @@
                                 <p class="detail-loading">Loading…</p>
                             {/if}
 
-                            {#if $session?.isSteward}
+                            {#if $session?.isAdmin && expandedDetail?.appPermissions}
+                                {@const perms = expandedDetail.appPermissions}
+                                {@const apps = Object.keys(perms).sort()}
+                                {@const levels = [...new Set(apps.flatMap(a => perms[a]))].sort((a, b) => a === "member" ? -1 : b === "member" ? 1 : a.localeCompare(b))}
+                                {#if apps.length > 0}
+                                    <div class="perms-section">
+                                        <p class="reset-label">Permissions</p>
+                                        <table class="perms-table">
+                                            <thead>
+                                                <tr>
+                                                    <th></th>
+                                                    {#each levels as level}
+                                                        <th class="perms-th">{level}</th>
+                                                    {/each}
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {#each apps as app}
+                                                    <tr>
+                                                        <td class="perms-app">{app}</td>
+                                                        {#each levels as level}
+                                                            <td class="perms-cell">
+                                                                {#if perms[app].includes(level)}
+                                                                    <span class="perm-dot perm-{level}">✓</span>
+                                                                {:else}
+                                                                    <span class="perm-dot perm-none">–</span>
+                                                                {/if}
+                                                            </td>
+                                                        {/each}
+                                                    </tr>
+                                                {/each}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                {/if}
+                            {/if}
+
+                            {#if $session?.isAdmin}
                                 <div class="app-access-section">
                                     <p class="reset-label">App access</p>
                                     <div class="app-access-row">
@@ -209,7 +246,7 @@
                                 </div>
                             {/if}
 
-                            {#if $session?.isSteward}
+                            {#if $session?.isAdmin}
                                 <div class="reset-section">
                                     <p class="reset-label">Reset password</p>
                                     <div class="reset-row">
@@ -232,29 +269,29 @@
                                     {#if resetError}<p class="reset-error">{resetError}</p>{/if}
                                     {#if resetOk}<p class="reset-ok">Password reset ✓</p>{/if}
                                 </div>
-                                <div class="steward-section">
-                                    {#if stewardError}<p class="reset-error">{stewardError}</p>{/if}
-                                    {#if m.steward}
+                                <div class="admin-section">
+                                    {#if adminError}<p class="reset-error">{adminError}</p>{/if}
+                                    {#if m.admin}
                                         <button
-                                            class="btn-steward-revoke"
-                                            onclick={() => doRevokeSteward(m.handle)}
-                                            disabled={stewardWorking}
+                                            class="btn-admin-revoke"
+                                            onclick={() => doRevokeAdmin(m.handle)}
+                                            disabled={adminWorking}
                                         >
-                                            {stewardWorking ? "…" : "Remove steward grant"}
+                                            {adminWorking ? "…" : "Remove admin grant"}
                                         </button>
-                                        {#if !m.isSteward}
-                                            <p class="steward-note">Not yet steward by seniority — grant can be removed.</p>
+                                        {#if !m.isAdmin}
+                                            <p class="admin-note">Not yet admin by seniority — grant can be removed.</p>
                                         {/if}
-                                    {:else if !m.isSteward}
+                                    {:else if !m.isAdmin}
                                         <button
-                                            class="btn-steward-grant"
-                                            onclick={() => doGrantSteward(m.handle)}
-                                            disabled={stewardWorking}
+                                            class="btn-admin-grant"
+                                            onclick={() => doGrantAdmin(m.handle)}
+                                            disabled={adminWorking}
                                         >
-                                            {stewardWorking ? "…" : "Make steward"}
+                                            {adminWorking ? "…" : "Make admin"}
                                         </button>
                                     {:else}
-                                        <p class="steward-note">Steward by seniority.</p>
+                                        <p class="admin-note">Admin by seniority.</p>
                                     {/if}
                                 </div>
                             {/if}
@@ -401,7 +438,7 @@
 
     .badge.retired { background: #ede9fe; color: #7c3aed; }
     .badge.exempt  { background: #fef3c7; color: #d97706; }
-    .badge.steward { background: #dbeafe; color: #1d4ed8; }
+    .badge.admin { background: #dbeafe; color: #1d4ed8; }
 
     .chevron { font-size: 0.6rem; color: #cbd5e1; margin-left: auto; flex-shrink: 0; }
 
@@ -419,6 +456,42 @@
     }
 
     .reset-section { margin-bottom: 0; }
+
+    .perms-section { margin-bottom: 1rem; }
+
+    .perms-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.82rem;
+    }
+
+    .perms-th {
+        text-align: center;
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #94a3b8;
+        padding: 0 0.5rem 0.35rem;
+    }
+
+    .perms-app {
+        color: #475569;
+        font-weight: 500;
+        padding: 0.25rem 0.75rem 0.25rem 0;
+        white-space: nowrap;
+    }
+
+    .perms-cell { text-align: center; padding: 0.25rem 0.5rem; }
+
+    .perm-dot {
+        font-size: 0.78rem;
+        font-weight: 700;
+    }
+
+    .perm-dot.perm-member { color: #16a34a; }
+    .perm-dot.perm-admin  { color: #1d4ed8; }
+    .perm-dot.perm-none   { color: #e2e8f0; }
 
     .app-access-section { margin-bottom: 1rem; }
 
@@ -502,15 +575,15 @@
     .reset-error { font-size: 0.82rem; color: #dc2626; margin: 0.4rem 0 0; }
     .reset-ok    { font-size: 0.82rem; color: #16a34a; margin: 0.4rem 0 0; font-weight: 600; }
 
-    .steward-section { margin-top: 0.75rem; }
+    .admin-section { margin-top: 0.75rem; }
 
-    .steward-note {
+    .admin-note {
         font-size: 0.8rem;
         color: #94a3b8;
         margin: 0.35rem 0 0;
     }
 
-    .btn-steward-grant {
+    .btn-admin-grant {
         font-size: 0.82rem;
         font-weight: 600;
         padding: 0.4rem 0.85rem;
@@ -521,9 +594,9 @@
         color: #1d4ed8;
         transition: background 0.15s;
     }
-    .btn-steward-grant:hover:not(:disabled) { background: #bfdbfe; }
+    .btn-admin-grant:hover:not(:disabled) { background: #bfdbfe; }
 
-    .btn-steward-revoke {
+    .btn-admin-revoke {
         font-size: 0.82rem;
         font-weight: 600;
         padding: 0.4rem 0.85rem;
@@ -534,9 +607,9 @@
         color: #b91c1c;
         transition: background 0.15s;
     }
-    .btn-steward-revoke:hover:not(:disabled) { background: #fecaca; }
-    .btn-steward-grant:disabled,
-    .btn-steward-revoke:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-admin-revoke:hover:not(:disabled) { background: #fecaca; }
+    .btn-admin-grant:disabled,
+    .btn-admin-revoke:disabled { opacity: 0.4; cursor: not-allowed; }
 
     .count { text-align: center; font-size: 0.8rem; color: #94a3b8; margin-top: 0.5rem; }
 

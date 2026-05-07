@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { requireAuth, requireSteward, requireGrangeAccess } from "./middleware.js";
+import { requireAuth, requireAdmin, requireGrangeAccess } from "./middleware.js";
 import {
     listFarms, getFarm, registerFarm, updateFarmStatus, updateFarmPractices, approveFarm,
 } from "./FarmController.js";
@@ -18,23 +18,23 @@ router.get(   "/farms",                        listFarms);
 router.get(   "/farms/:id",                    getFarm);
 router.post(  "/farms",                        ...requireGrangeAccess, registerFarm);
 router.patch( "/farms/:id/practices",          ...requireGrangeAccess, updateFarmPractices);
-router.patch( "/farms/:id/status",             ...requireSteward,      updateFarmStatus);
-router.post(  "/farms/:id/approve",            ...requireSteward,      approveFarm);
+router.patch( "/farms/:id/status",             ...requireAdmin,      updateFarmStatus);
+router.post(  "/farms/:id/approve",            ...requireAdmin,      approveFarm);
 
 // ── Needs projections ─────────────────────────────────────────────────────────
 router.get(   "/projections",                  listProjections);
 router.get(   "/projections/:id",              getProjection);
 router.get(   "/projections/:id/coverage",     getProjectionCoverage);
-router.post(  "/projections",                  ...requireSteward,      publishProjection);
-router.patch( "/projections/:id/approve",      ...requireSteward,      approveProjection);
+router.post(  "/projections",                  ...requireAdmin,      publishProjection);
+router.patch( "/projections/:id/approve",      ...requireAdmin,      approveProjection);
 
 // ── Contracts ─────────────────────────────────────────────────────────────────
 router.get(   "/contracts",                    listContracts);
 router.get(   "/contracts/:id",                getContract);
 router.post(  "/contracts",                    ...requireGrangeAccess, submitContract);
-router.patch( "/contracts/:id/status",         ...requireSteward,      updateContractStatus);
+router.patch( "/contracts/:id/status",         ...requireAdmin,      updateContractStatus);
 router.post(  "/contracts/:id/deliveries",     ...requireGrangeAccess, recordDelivery);
-router.post(  "/contracts/:id/inspections",    ...requireSteward,      recordInspection);
-router.post(  "/contracts/:id/settle",         ...requireSteward,      settleContract);
+router.post(  "/contracts/:id/inspections",    ...requireAdmin,      recordInspection);
+router.post(  "/contracts/:id/settle",         ...requireAdmin,      settleContract);
 
 export default router;

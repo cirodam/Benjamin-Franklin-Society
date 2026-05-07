@@ -181,11 +181,11 @@ const DEFAULT_ARTICLES: DocumentArticle[] = [
                 ],
             },
             {
-                id: "IV.2", title: "Stewardship",
-                body: "A member who has been continuously active for {stewardshipThresholdYears} years automatically becomes a steward. Stewards have additional responsibilities: they are eligible for sortition into the assembly and may serve as clerks and witnesses in governance proceedings.",
-                rationale: "Stewardship is earned through sustained participation, not appointment. The threshold is high enough to signal genuine commitment, low enough to be reachable.",
+                id: "IV.2", title: "Senior Members",
+                body: "A member who has been continuously active for {adminThresholdYears} years automatically gains admin access. Senior members have additional responsibilities: they are eligible for sortition into the assembly and may serve as clerks and witnesses in governance proceedings.",
+                rationale: "Admin access is earned through sustained participation, not appointment. The threshold is high enough to signal genuine commitment, low enough to be reachable.",
                 directives: [
-                    { verb: "parameter.define", args: ["stewardshipThresholdYears", "3", "false", "1", "20", "Years of continuous active membership required to attain steward status"] },
+                    { verb: "parameter.define", args: ["adminThresholdYears", "3", "false", "1", "20", "Years of continuous active membership required to gain admin access"] },
                 ],
             },
             {
@@ -248,7 +248,7 @@ export const DEFAULT_CONSTITUTION: GoverningDocument = {
         birthdayCirculationFraction:    { value: 0.20,   immutable: false, description: "Fraction of each annual person-year issuance paid to the member's primary account.", constraints: { min: 0, max: 0.5 } },
         endowmentPoolFraction:          { value: 0.80,   immutable: false, description: "Fraction of a new member's join endowment directed into the social insurance pool.", constraints: { min: 0.50, max: 0.95 } },
         memberAdmissionVouchesRequired: { value: 3,      immutable: false, description: "Vouches required to automatically admit a membership applicant.",         constraints: { min: 1, max: 10 } },
-        stewardshipThresholdYears:      { value: 3,      immutable: false, description: "Years of continuous membership required to attain steward status.",       constraints: { min: 1, max: 20 } },
+        adminThresholdYears:             { value: 3,      immutable: false, description: "Years of continuous membership required to gain admin access.",            constraints: { min: 1, max: 20 } },
     },
     amendments: [],
     // authorityMap removed — authority.define and authority.grant directives

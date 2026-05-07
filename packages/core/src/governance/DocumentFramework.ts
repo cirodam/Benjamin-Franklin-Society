@@ -21,6 +21,17 @@
 //   parameter.define  <key> <value> <immutable> [min] [max] <description>
 //   document.require  <type> [description]
 //
+//   domain.define     <id>
+//     name = section title, description = section body
+//
+//   domain.unit       <domainId> <unitType>
+//     name = section title, description = section body
+//
+//   pool.define       <id> <voteRuleId>
+//     name = section title, description = section body, mandate = section rationale
+//
+//   pool.governs      <poolId> <domainId>
+//
 // Bylaws and ordinances may NOT carry authority.define or authority.grant
 // directives — those are reserved for constitution and charter documents.
 
@@ -28,7 +39,11 @@ export type DirectiveVerb =
     | "authority.define"
     | "authority.grant"
     | "parameter.define"
-    | "document.require";
+    | "document.require"
+    | "domain.define"
+    | "domain.unit"
+    | "pool.define"
+    | "pool.governs";
 
 export interface DocumentDirective {
     verb: DirectiveVerb;
@@ -61,12 +76,47 @@ export interface ParameterDefineDirective {
 }
 
 /**
+ * Declares that a functional domain with the given stable ID should exist.
+ * Name and description are read from the enclosing section (title + body).
+ */
+export interface DomainDefineDirective {
+    id: string;
+}
+
+/**
+ * Declares that a functional unit of the given type should exist in the domain.
+ * Name and description are read from the enclosing section (title + body).
+ */
+export interface DomainUnitDirective {
+    domainId: string;
+    unitType: string;
+}
+
+/**
+ * Declares that a leader pool with the given stable ID should exist.
+ * Name from section title; description from section body; mandate from section rationale.
+ */
+export interface PoolDefineDirective {
+    id:           string;
+    voteRuleId:   string;
+}
+
+/**
+ * Declares that the given pool governs the given domain.
+ */
+export interface PoolGovernsDirective {
+    poolId:   string;
+    domainId: string;
+}
+
+/**
  * Parse a raw DocumentDirective into a typed shape.
  * Returns null if the directive is malformed.
  */
 export function parseDirective(
     d: DocumentDirective,
-): AuthorityDefineDirective | AuthorityGrantDirective | ParameterDefineDirective | null {
+): AuthorityDefineDirective | AuthorityGrantDirective | ParameterDefineDirective
+ | DomainDefineDirective | DomainUnitDirective | PoolDefineDirective | PoolGovernsDirective | null {
     const a = d.args;
     switch (d.verb) {
         case "authority.define":
@@ -83,8 +133,6 @@ export function parseDirective(
                 rawValue === "false" ? false :
                 parseFloat(rawValue);
             const immutable = a[2] === "true";
-            // args[3] may be min, [4] may be max, rest is description
-            // Convention: if arg parses as a number it's a constraint, else start of description
             let idx = 3;
             let min: number | undefined;
             let max: number | undefined;
@@ -93,6 +141,18 @@ export function parseDirective(
             const description = a.slice(idx).join(" ");
             return { key: a[0], value, immutable, min, max, description };
         }
+        case "domain.define":
+            if (a.length < 1) return null;
+            return { id: a[0] };
+        case "domain.unit":
+            if (a.length < 2) return null;
+            return { domainId: a[0], unitType: a[1] };
+        case "pool.define":
+            if (a.length < 2) return null;
+            return { id: a[0], voteRuleId: a[1] };
+        case "pool.governs":
+            if (a.length < 2) return null;
+            return { poolId: a[0], domainId: a[1] };
         case "document.require":
             return null; // not yet consumed by reconciler
     }

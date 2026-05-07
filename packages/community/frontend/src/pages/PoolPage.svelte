@@ -75,7 +75,7 @@
         } finally { petitionSaving = false; }
     }
 
-    const isSteward = $derived(($session as any)?.isSteward ?? false);
+    const isAdmin = $derived(($session as any)?.isAdmin ?? false);
     const poolId = $derived($selectedPoolId);
 
     async function load() {
@@ -167,7 +167,7 @@
                     {:else}
                         <p class="mandate-empty">No mandate set.</p>
                     {/if}
-                    {#if isSteward}
+                    {#if isAdmin}
                         <button class="mandate-edit-btn" onclick={() => { mandateDraft = pool!.mandate; editingMandate = true; }}>
                             {pool.mandate ? "Edit mandate" : "Set mandate"}
                         </button>
@@ -189,7 +189,7 @@
         {/if}
     {/if}
 
-    {#if !loading && !error && isSteward && pool}
+    {#if !loading && !error && isAdmin && pool}
         {#if nominating}
             <div class="nominate-form">
                 <select class="nominate-select" bind:value={petitionPersonId}>

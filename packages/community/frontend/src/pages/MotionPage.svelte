@@ -38,14 +38,14 @@
             : []
     );
 
-    // outcome form (steward)
+    // outcome form (admin)
     let showOutcomeForm = $state(false);
     let outcomeChoice   = $state<MotionOutcome>("passed");
     let outcomeNote     = $state("");
     let submittingOutcome = $state(false);
 
     const me = $derived($session?.handle ?? null);
-    const isSteward = $derived(($session as any)?.isSteward ?? false);
+    const isAdmin = $derived(($session as any)?.isAdmin ?? false);
     const isMembership = $derived(motion?.authorityId === "membership");
 
     const myVote = $derived(
@@ -247,13 +247,13 @@
             <p class="my-vote">You voted: <strong>{myVote.vote}</strong></p>
         {/if}
 
-        <!-- Steward action: open voting -->
-        {#if motion.stage === "deliberating" && isSteward}
+        <!-- Admin action: open voting -->
+        {#if motion.stage === "deliberating" && isAdmin}
             <button class="btn-action" onclick={doOpenVoting}>Open voting now</button>
         {/if}
 
-        <!-- Steward override actions -->
-        {#if !isMembership && isSteward && motion.stage !== "resolved"}
+        <!-- Admin override actions -->
+        {#if !isMembership && isAdmin && motion.stage !== "resolved"}
             <div class="clerk-actions">
                 {#if !showOutcomeForm}
                     <button class="btn-action" onclick={() => showOutcomeForm = true}>Record outcome</button>

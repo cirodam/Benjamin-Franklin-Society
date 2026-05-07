@@ -137,8 +137,8 @@ export async function setup(req: Request, res: Response): Promise<void> {
     await svc().add(person);
     await svc().setPassword(person.id, password);
 
-    // Grant the founder explicit stewardship
-    svc().grantSteward(person.id);
+    // Grant the founder explicit admin access
+    svc().grantAdmin(person.id);
 
     // Grant the founder access to all satellite apps
     await svc().grantApp(person.id, "bank");

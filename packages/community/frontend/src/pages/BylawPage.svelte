@@ -7,7 +7,7 @@
     import AuthorityBadge from "../components/AuthorityBadge.svelte";
 
     const bylawId = $derived($selectedBylawId ?? "");
-    const isSteward = $derived($session?.isSteward ?? false);
+    const isAdmin = $derived($session?.isAdmin ?? false);
 
     let doc: BylawDto | null = $state(null);
     let voteRules: VoteRule[]  = $state([]);
@@ -156,7 +156,7 @@
                 </div>
 
                 <!-- Add section to this article -->
-                {#if isSteward}
+                {#if isAdmin}
                     {#if addingSectionForArticle === article.number}
                         <div class="add-form">
                             <div class="add-form-title">Add Section to Article {article.number}</div>
@@ -188,7 +188,7 @@
         {/each}
 
         <!-- Add article -->
-        {#if isSteward}
+        {#if isAdmin}
             {#if showAddArticle}
                 <div class="add-form">
                     <div class="add-form-title">Add Article</div>

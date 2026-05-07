@@ -779,7 +779,7 @@ export const DEFAULT_ROLE_TYPES: Omit<RoleTypeData, "id">[] = [
     // ── Administration & Finance ──────────────────────────────────────────────
     {
         title: "Treasurer",
-        description: "Manages the community treasury: tracks income and expenditure, reconciles accounts, prepares financial reports for stewards, and ensures funds are allocated in line with governance decisions.",
+        description: "Manages the community treasury: tracks income and expenditure, reconciles accounts, prepares financial reports for the assembly, and ensures funds are allocated in line with governance decisions.",
         defaultKinPerMonth: 4_583,
         preferredUnitTypes: ["treasury-office"],
         category: "Administration & Finance",
@@ -788,7 +788,7 @@ export const DEFAULT_ROLE_TYPES: Omit<RoleTypeData, "id">[] = [
             "Process income and expenditure transactions",
             "Reconcile accounts and prepare periodic financial reports",
             "Ensure fund allocations align with governance decisions",
-            "Provide financial transparency to stewards and members",
+            "Provide financial transparency to admins and members",
         ],
         qualifications: [
             "Accounting, bookkeeping, or finance training",

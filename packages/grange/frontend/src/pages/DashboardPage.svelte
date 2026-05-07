@@ -56,7 +56,7 @@
             The Grange coordinates food production between the community and its member farms.
             The community publishes <strong>needs projections</strong> — seasonal windows that signal
             how much of each crop the community wants, and at what price. Farms respond with
-            <strong>contract offers</strong> against specific crop needs. Stewards review coverage,
+            <strong>contract offers</strong> against specific crop needs. Coordinators review coverage,
             approve contracts, and track deliveries and inspections through to settlement.
         </p>
         <p>

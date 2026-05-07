@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { requireAuth, requireSteward } from "./middleware.js";
+import { requireAuth, requireAdmin } from "./middleware.js";
 import * as economics from "./EconomicsController.js";
 import * as federation from "./FederationController.js";
 import * as budget from "./BudgetController.js";
@@ -12,7 +12,7 @@ const router = Router();
 // Economics (public transparency)
 router.get( "/economics",            economics.getEconomics);
 router.get( "/budget",               budget.getCommunityBudget);
-router.post("/budget/simulate-step", requireSteward, budget.simulateStep);
+router.post("/budget/simulate-step", requireAdmin, budget.simulateStep);
 
 // Federation membership
 router.get( "/federation",          federation.getFederationStatus);
@@ -21,10 +21,10 @@ router.get( "/federation/sync",     federation.syncFederationStatus);
 router.post("/federation/register", federation.registerAsFounded);
 
 // Payment tokens — steward-only management; receive is federation-signed
-router.post(  "/payment-tokens",                  requireSteward, paymentTokens.issueToken);
-router.post(  "/payment-tokens/:token/rotate",    requireSteward, paymentTokens.rotateToken);
-router.delete("/payment-tokens/:token",           requireSteward, paymentTokens.revokeToken);
-router.get(   "/payment-tokens/person/:personId", requireSteward, paymentTokens.listTokensForPerson);
+router.post(  "/payment-tokens",                  requireAdmin, paymentTokens.issueToken);
+router.post(  "/payment-tokens/:token/rotate",    requireAdmin, paymentTokens.rotateToken);
+router.delete("/payment-tokens/:token",           requireAdmin, paymentTokens.revokeToken);
+router.get(   "/payment-tokens/person/:personId", requireAdmin, paymentTokens.listTokensForPerson);
 router.post(  "/payment-tokens/receive",                          paymentTokens.receivePayment);
 
 // Cross-community transfers

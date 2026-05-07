@@ -180,6 +180,17 @@ async function main(): Promise<void> {
         }
     }
 
+    // ── Social Insurance bylaw (seed on first boot if missing) ────────────
+    {
+        const { DocumentLoader }               = await import("./governance/DocumentLoader.js");
+        const { SocialInsuranceBylawDefaults } = await import("./governance/defaults/SocialInsuranceBylawDefaults.js");
+        const docs = new DocumentLoader();
+        if (!docs.load("social-insurance")) {
+            docs.save(SocialInsuranceBylawDefaults.build());
+            logger.info("Seeded default social insurance bylaw");
+        }
+    }
+
     // ── Persons ────────────────────────────────────────────────────────────
     const personLoader = new PersonLoader();
     PersonService.getInstance().init(personLoader);

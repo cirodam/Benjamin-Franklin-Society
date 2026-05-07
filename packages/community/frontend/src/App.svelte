@@ -41,6 +41,7 @@ import MotionPage        from "./pages/MotionPage.svelte";
     import RoleTypePage        from "./pages/RoleTypePage.svelte";
     import UnitTypePage        from "./pages/UnitTypePage.svelte";
     import AuthorityPage       from "./pages/AuthorityPage.svelte";
+    import DesiredStatePage    from "./pages/DesiredStatePage.svelte";
 
     type AppState = "loading" | "setup" | "login" | "apply" | "app";
     let appState: AppState = $state("loading");
@@ -166,6 +167,8 @@ import MotionPage        from "./pages/MotionPage.svelte";
             <UnitTypePage />
         {:else if $currentPage === "authority"}
             <AuthorityPage />
+        {:else if $currentPage === "desired-state"}
+            <DesiredStatePage />
         {/if}
     </main>
     <BottomNav />

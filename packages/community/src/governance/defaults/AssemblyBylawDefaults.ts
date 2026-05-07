@@ -42,7 +42,7 @@ export const AssemblyBylawDefaults = {
                         {
                             id:        "I.1",
                             title:     "Nature and Authority",
-                            body:      "The Assembly is the sovereign governing body of the community. It is composed of members drawn by sortition from the full membership, as specified in the Constitution. Its decisions are binding on the community, the Stewardship Council, all domain stewards, and all leadership pools. No body within the community may take an action that contradicts a standing assembly decision, except in a declared emergency under §III.3.",
+                            body:      "The Assembly is the sovereign governing body of the community. It is composed of members drawn by sortition from the full membership, as specified in the Constitution. Its decisions are binding on the community, the Administration Council, all domain administrators, and all leadership pools. No body within the community may take an action that contradicts a standing assembly decision, except in a declared emergency under §III.3.",
                             rationale: "The assembly is not the full membership voting in mass — it is a randomly drawn cross-section of the membership, sized to be workable as a deliberative body while remaining representative. The full membership retains the right to petition, attend, speak, and vote in referendums.",
                         },
                         {
@@ -89,7 +89,7 @@ export const AssemblyBylawDefaults = {
                         {
                             id:        "II.4",
                             title:     "Agenda",
-                            body:      "The agenda is open: any active member may place an item on the agenda by submitting it to the Secretary at least {agendaSubmissionDeadlineDays} days before the meeting. The Secretary may not refuse a submission. The default order of business is: (1) call to order and quorum; (2) adoption of agenda; (3) approval of previous minutes; (4) reports from Council, stewards, and pools; (5) new business; (6) open forum; (7) announcements; (8) adjournment. The Assembly may reorder or add items at the start of the meeting by simple majority.",
+                            body:      "The agenda is open: any active member may place an item on the agenda by submitting it to the Secretary at least {agendaSubmissionDeadlineDays} days before the meeting. The Secretary may not refuse a submission. The default order of business is: (1) call to order and quorum; (2) adoption of agenda; (3) approval of previous minutes; (4) reports from Council, admins, and pools; (5) new business; (6) open forum; (7) announcements; (8) adjournment. The Assembly may reorder or add items at the start of the meeting by simple majority.",
                             rationale: "An open agenda is a structural expression of member equality: no officer or faction may prevent a member from raising a matter before the community. The default order places open forum after new business so that informal concerns do not crowd out formal decisions.",
                             directives: [
                                 { verb: "parameter.define", args: ["agendaSubmissionDeadlineDays", "5", "false", "1", "14", "Days before a meeting by which agenda item submissions are due"] },
@@ -251,7 +251,7 @@ export const AssemblyBylawDefaults = {
                         {
                             id:        "VIII.1",
                             title:     "Council Accountability",
-                            body:      "The Stewardship Council reports to the Assembly at every regular meeting. The Council may be overridden on any decision by simple majority Assembly vote. The Council may not make any decision reserved to the Assembly by this bylaw, another bylaw, or the constitution. It must bring to the Assembly any matter outside its authority, even if urgent.",
+                            body:      "The Administration Council reports to the Assembly at every regular meeting. The Council may be overridden on any decision by simple majority Assembly vote. The Council may not make any decision reserved to the Assembly by this bylaw, another bylaw, or the constitution. It must bring to the Assembly any matter outside its authority, even if urgent.",
                             rationale: "Accountability means more than reporting — it means the Assembly can actually reverse council decisions. The override right must be real, not nominal.",
                         },
                         {

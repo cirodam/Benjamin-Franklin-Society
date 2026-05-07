@@ -94,24 +94,24 @@ export function issueCredential(req: Request, res: Response): void {
     res.json(credential);
 }
 
-// POST /api/persons/:handle/steward
-export function grantSteward(req: Request, res: Response): void {
+// POST /api/persons/:handle/admin
+export function grantAdmin(req: Request, res: Response): void {
     try {
         const person = svc().getByHandle(req.params.handle as string);
         if (!person) { res.status(404).json({ error: "Person not found" }); return; }
-        const updated = svc().grantSteward(person.id);
+        const updated = svc().grantAdmin(person.id);
         res.json(toDto(updated));
     } catch (err) {
         res.status(404).json({ error: (err as Error).message });
     }
 }
 
-// DELETE /api/persons/:handle/steward
-export function revokeSteward(req: Request, res: Response): void {
+// DELETE /api/persons/:handle/admin
+export function revokeAdmin(req: Request, res: Response): void {
     try {
         const person = svc().getByHandle(req.params.handle as string);
         if (!person) { res.status(404).json({ error: "Person not found" }); return; }
-        const updated = svc().revokeSteward(person.id);
+        const updated = svc().revokeAdmin(person.id);
         res.json(toDto(updated));
     } catch (err) {
         res.status(404).json({ error: (err as Error).message });
@@ -149,8 +149,8 @@ function toDto(p: Person) {
         phone:           p.phone,
         disabled:        p.disabled,
         retired:         p.retired,
-        steward:         p.steward,
-        isSteward:       svc().isSteward(p),
+        admin:           p.admin,
+        isAdmin:         svc().isAdmin(p),
         languages:       p.languages,
         joinDate:        p.joinDate,
         apps:            p.apps,
@@ -167,8 +167,8 @@ function toListDto(p: Person) {
         handle:          p.handle,
         disabled:        p.disabled,
         retired:         p.retired,
-        steward:         p.steward,
-        isSteward:       svc().isSteward(p),
+        admin:           p.admin,
+        isAdmin:         svc().isAdmin(p),
         languages:       p.languages,
         joinDate:        p.joinDate,
         apps:            p.apps,

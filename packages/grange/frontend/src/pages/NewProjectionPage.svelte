@@ -130,7 +130,7 @@
             <h2>Crop needs</h2>
             <p class="help">
                 Set the ceiling (maximum contracts accepted) and floor (minimum desired). Farms see
-                the signal price but may offer any price — stewards choose which offers to approve.
+                the signal price but may offer any price — coordinators choose which offers to approve.
             </p>
 
             {#each crops as crop, i}

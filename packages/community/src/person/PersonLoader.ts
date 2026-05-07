@@ -10,7 +10,7 @@ interface PersonRow {
     handle:            string;
     disabled:          number;
     retired:           number;
-    steward:           number;
+    admin:             number;
     guardian_id:       string | null;
     phone:             string | null;
     pin_hash:          string | null;
@@ -32,12 +32,12 @@ export class PersonLoader {
         this.db.prepare(`
             INSERT INTO persons
                 (id, first_name, last_name, birth_date, join_date, handle,
-                 disabled, retired, steward,
+                 disabled, retired, admin,
                  guardian_id, phone, pin_hash, password_hash,
                  private_key_der, public_key_hex, languages, apps, must_change_password, credential)
             VALUES
                 (@id, @first_name, @last_name, @birth_date, @join_date, @handle,
-                 @disabled, @retired, @steward,
+                 @disabled, @retired, @admin,
                  @guardian_id, @phone, @pin_hash, @password_hash,
                  @private_key_der, @public_key_hex, @languages, @apps, @must_change_password, @credential)
             ON CONFLICT(id) DO UPDATE SET
@@ -48,7 +48,7 @@ export class PersonLoader {
                 handle               = excluded.handle,
                 disabled             = excluded.disabled,
                 retired              = excluded.retired,
-                steward              = excluded.steward,
+                admin                = excluded.admin,
                 guardian_id          = excluded.guardian_id,
                 phone                = excluded.phone,
                 pin_hash             = excluded.pin_hash,
@@ -68,7 +68,7 @@ export class PersonLoader {
             handle:            person.handle,
             disabled:          person.disabled ? 1 : 0,
             retired:           person.retired ? 1 : 0,
-            steward:           person.steward ? 1 : 0,
+            admin:             person.admin ? 1 : 0,
             guardian_id:       person.guardianId ?? null,
             phone:             person.phone ?? null,
             pin_hash:          pinHash ?? null,
@@ -102,7 +102,7 @@ export class PersonLoader {
             handle:          r.handle,
             disabled:        r.disabled === 1,
             retired:         r.retired === 1,
-            steward:         r.steward === 1,
+            admin:           r.admin === 1,
             guardianId:      r.guardian_id ?? null,
             phone:           r.phone ?? null,
             pinHash:            r.pin_hash ?? null,

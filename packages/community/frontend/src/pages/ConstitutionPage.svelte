@@ -15,7 +15,7 @@
     let loading = $state(true);
     let error = $state("");
 
-    const isSteward = $derived($session?.isSteward ?? false);
+    const isAdmin = $derived($session?.isAdmin ?? false);
 
     $effect(() => {
         Promise.all([getConstitution(), getAuthorities(), listVoteRules()])

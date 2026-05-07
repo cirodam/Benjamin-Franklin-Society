@@ -15,6 +15,7 @@ export interface PersonPatch {
     disabled?: boolean;
     retired?: boolean;
     steward?: boolean;
+    admin?: boolean;
     languages?: LanguageProficiency[];
 }
 
@@ -159,7 +160,8 @@ export class PersonService {
         if (patch.phone     !== undefined) person.phone     = patch.phone;
         if (patch.disabled  !== undefined) person.disabled  = patch.disabled;
         if (patch.retired   !== undefined) person.retired   = patch.retired;
-        if (patch.steward   !== undefined) person.steward   = patch.steward;
+        if (patch.steward   !== undefined) person.admin     = patch.steward;
+        if (patch.admin     !== undefined) person.admin     = patch.admin;
         if (patch.languages !== undefined) person.languages = patch.languages;
         this.save(person);
         return person;
@@ -197,7 +199,13 @@ export class PersonService {
             perms[app] = new Set(["member"]);
         }
 
-        if (perms.mail && this.isSteward(person)) {
+        // Community app — all persons are members; admins get elevated level
+        perms["community"] = new Set(["member"]);
+        if (this.isAdmin(person)) {
+            perms["community"].add("admin");
+        }
+
+        if (perms.mail && this.isAdmin(person)) {
             perms.mail.add("moderator");
         }
 
@@ -216,7 +224,9 @@ export class PersonService {
         for (const pool of domainSvc.getPools()) {
             if (!pool.hasPerson(person.id)) continue;
             const name = pool.name.toLowerCase();
-            if (name.includes("bank")) {
+            if (name.includes("farmer") || name.includes("farm")) {
+                perms.grange?.add("admin");
+            } else if (name.includes("bank")) {
                 perms.bank?.add("admin");
             } else if (name.includes("market")) {
                 perms.market?.add("admin");
@@ -330,32 +340,32 @@ export class PersonService {
     }
 
     /**
-     * Returns true when the person holds steward privileges.
-     * Two paths: explicit flag set by an existing steward, OR membership
+     * Returns true when the person holds admin privileges.
+     * Two paths: explicit flag set by an existing admin, OR membership
      * duration has reached the constitutional threshold.
      */
-    isSteward(person: Person): boolean {
-        if (person.steward) return true;
+    isAdmin(person: Person): boolean {
+        if (person.admin) return true;
         const threshold = (() => {
-            try { return new DocumentLoader().getParam<number>("constitution", "stewardshipThresholdYears"); }
+            try { return new DocumentLoader().getParam<number>("constitution", "adminThresholdYears"); }
             catch { return 3; }
         })();
         const yearsAsMember = (Date.now() - person.joinDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
         return yearsAsMember >= threshold;
     }
 
-    grantSteward(personId: string): Person {
+    grantAdmin(personId: string): Person {
         const person = this.persons.get(personId);
         if (!person) throw new Error(`Person ${personId} not found`);
-        person.steward = true;
+        person.admin = true;
         this.save(person);
         return person;
     }
 
-    revokeSteward(personId: string): Person {
+    revokeAdmin(personId: string): Person {
         const person = this.persons.get(personId);
         if (!person) throw new Error(`Person ${personId} not found`);
-        person.steward = false;
+        person.admin = false;
         this.save(person);
         return person;
     }
