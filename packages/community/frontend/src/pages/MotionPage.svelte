@@ -46,7 +46,7 @@
 
     const me = $derived($session?.handle ?? null);
     const isAdmin = $derived(($session as any)?.isAdmin ?? false);
-    const isMembership = $derived(motion?.authorityId === "membership");
+    const isMembership = $derived(motion?.authorityId === "referendum");
 
     const myVote = $derived(
         motion ? motion.votes.find(v => v.handle === me) ?? null : null

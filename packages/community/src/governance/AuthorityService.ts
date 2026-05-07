@@ -11,20 +11,15 @@ export class AuthorityService {
         return AuthorityService.instance;
     }
 
-    /** All authorities: virtual membership + referendum + stored authorities + leadership pools. */
+    /** All authorities: stored (reconciler-created) authorities + leadership pools. */
     getAll(): Authority[] {
         return [
-            new Authority("membership", "Full Membership",  "absolute-majority",      "All active members — asynchronous online referendum.", "membership"),
-            new Authority("referendum", "Referendum",        "absolute-supermajority", "A direct vote of all active members, used for constitutional decisions.", "referendum"),
             ...AuthorityLoader.getInstance().loadAll(),
             ...DomainService.getInstance().getPools(),
         ];
     }
 
     get(id: string): Authority | undefined {
-        if (id === "membership" || id === "referendum") {
-            return this.getAll().find(a => a.id === id);
-        }
         return AuthorityLoader.getInstance().load(id)
             ?? DomainService.getInstance().getPool(id);
     }
@@ -38,7 +33,7 @@ export class AuthorityService {
         if (authority instanceof Assembly)   return authority.memberIds;
         if (authority instanceof Committee)  return authority.memberIds;
         if (authority instanceof LeaderPool) return authority.personIds;
-        if (authorityId === "membership" || authorityId === "referendum") {
+        if (authorityId === "referendum") {
             return PersonService.getInstance().getAll()
                 .filter(p => !p.disabled)
                 .map(p => p.id);

@@ -41,7 +41,7 @@
     async function load() {
         loading = true; error = "";
         try {
-            motions = await listMotions({ authorityId: "membership" });
+            motions = await listMotions({ authorityId: "referendum" });
         } catch (e) {
             error = e instanceof Error ? e.message : "Failed to load referenda";
         } finally { loading = false; }
@@ -60,7 +60,7 @@
         creating = true; createError = "";
         try {
             const m = await createMotion({
-                authorityId:     "membership",
+                authorityId:     "referendum",
                 title:           newTitle.trim(),
                 description:     newDesc.trim(),
                 kind:            selectedKind || null,
