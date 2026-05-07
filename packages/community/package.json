@@ -5,6 +5,7 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
+    "postbuild": "node -e \"require('fs').cpSync('src/governance/data', 'dist/governance/data', {recursive: true})\"",
     "dev": "tsc --watch",
     "start": "node dist/server.js"
   },

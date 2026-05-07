@@ -71,7 +71,7 @@
         {@const allDocs = [
             ...(charter      ? [{ doc: charter,      kind: "Charter",      action: openCharter }]      : []),
             ...(constitution ? [{ doc: constitution,  kind: "Constitution", action: openConstitution }] : []),
-            ...bylaws.map(b  => ({ doc: b,            kind: "Bylaw",        action: () => openBylaw(b) })),
+            ...bylaws.map(b  => ({ doc: b,            kind: b.type.charAt(0).toUpperCase() + b.type.slice(1), action: () => openBylaw(b) })),
         ]}
         <ul class="doc-list">
             {#each allDocs as { doc, kind, action } (doc.id)}

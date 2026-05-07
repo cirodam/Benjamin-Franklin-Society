@@ -22,6 +22,7 @@ import { FunctionalUnitLoader } from "./common/domain/FunctionalUnitLoader.js";
 import { FunctionalDomainLoader } from "./common/domain/FunctionalDomainLoader.js";
 import { LeaderPoolLoader } from "./governance/LeaderPoolLoader.js";
 import { DocumentLoader } from "./governance/DocumentLoader.js";
+import { importTemplate, loadTemplate } from "./governance/DocumentImportExport.js";
 import { CommunityIdentityStore } from "./CommunityIdentityStore.js";
 import { MotionLoader } from "./governance/MotionLoader.js";
 import { MotionService } from "./governance/MotionService.js";
@@ -138,56 +139,55 @@ async function main(): Promise<void> {
 
     // ── Constitution (seed on first boot if missing) ─────────────────
     {
-        const { DocumentLoader }        = await import("./governance/DocumentLoader.js");
-        const { DEFAULT_CONSTITUTION }  = await import("./governance/defaults/ConstitutionDefaults.js");
         const docs = new DocumentLoader();
         if (!docs.load("constitution")) {
-            docs.save(DEFAULT_CONSTITUTION);
+            docs.save(importTemplate(loadTemplate("constitution")));
             logger.info("Seeded default constitution document");
         }
     }
 
     // ── Charter (seed on existing installs if missing) ────────────────────
     {
-        const { DocumentLoader }    = await import("./governance/DocumentLoader.js");
-        const { makeDefaultCharter } = await import("./governance/defaults/CharterDefaults.js");
         const docs = new DocumentLoader();
         if (!docs.load("charter")) {
-            docs.save(makeDefaultCharter());
+            docs.save(importTemplate(loadTemplate("charter")));
             logger.info("Seeded default charter document");
         }
     }
 
     // ── Membership bylaw (seed on first boot if missing) ──────────────────
     {
-        const { DocumentLoader }           = await import("./governance/DocumentLoader.js");
-        const { MembershipBylawDefaults }  = await import("./governance/defaults/MembershipBylawDefaults.js");
         const docs = new DocumentLoader();
         if (!docs.load("membership")) {
-            docs.save(MembershipBylawDefaults.build());
+            docs.save(importTemplate(loadTemplate("membership")));
             logger.info("Seeded default membership bylaw");
         }
     }
 
     // ── Assembly & Voting bylaw (seed on first boot if missing) ───────────
     {
-        const { DocumentLoader }           = await import("./governance/DocumentLoader.js");
-        const { AssemblyBylawDefaults }    = await import("./governance/defaults/AssemblyBylawDefaults.js");
         const docs = new DocumentLoader();
         if (!docs.load("assembly-voting")) {
-            docs.save(AssemblyBylawDefaults.build());
+            docs.save(importTemplate(loadTemplate("assembly-voting")));
             logger.info("Seeded default assembly and voting bylaw");
         }
     }
 
     // ── Social Insurance bylaw (seed on first boot if missing) ────────────
     {
-        const { DocumentLoader }               = await import("./governance/DocumentLoader.js");
-        const { SocialInsuranceBylawDefaults } = await import("./governance/defaults/SocialInsuranceBylawDefaults.js");
         const docs = new DocumentLoader();
         if (!docs.load("social-insurance")) {
-            docs.save(SocialInsuranceBylawDefaults.build());
+            docs.save(importTemplate(loadTemplate("social-insurance")));
             logger.info("Seeded default social insurance bylaw");
+        }
+    }
+
+    // ── Healthcare ordinance (seed on first boot if missing) ──────────────
+    {
+        const docs = new DocumentLoader();
+        if (!docs.load("healthcare")) {
+            docs.save(importTemplate(loadTemplate("healthcare")));
+            logger.info("Seeded default healthcare ordinance");
         }
     }
 

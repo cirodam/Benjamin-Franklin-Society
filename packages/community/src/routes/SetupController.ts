@@ -3,7 +3,7 @@ import { PersonService } from "../person/PersonService.js";
 import { Person } from "../person/Person.js";
 import { DocumentLoader } from "../governance/DocumentLoader.js";
 import { CommunityIdentityStore } from "../CommunityIdentityStore.js";
-import { makeDefaultCharter } from "../governance/defaults/CharterDefaults.js";
+import { importTemplate, loadTemplate } from "../governance/DocumentImportExport.js";
 
 // ── Sample population seeder ──────────────────────────────────────────────────
 
@@ -151,7 +151,7 @@ export async function setup(req: Request, res: Response): Promise<void> {
     // Seed the charter document if it doesn't already exist
     const docs = new DocumentLoader();
     if (!docs.load("charter")) {
-        docs.save(makeDefaultCharter());
+        docs.save(importTemplate(loadTemplate("charter")));
     }
 
     // Optionally seed a sample population for testing
