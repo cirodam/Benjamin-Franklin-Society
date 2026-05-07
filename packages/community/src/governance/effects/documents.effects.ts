@@ -1,6 +1,6 @@
 import { effectRegistry } from "@ecf/core";
 import { DocumentLoader } from "../DocumentLoader.js";
-import { CommunityLogService } from "../../log/CommunityLogService.js";
+import { ActivityLogService } from "@ecf/core";
 
 // ── create-bylaw ──────────────────────────────────────────────────────────────
 // Payload: { title, preamble?, sunsetYears? }
@@ -37,7 +37,7 @@ effectRegistry.register("create-bylaw", {
         const sunsetLabel = bylaw.expiresAt ? ` · expires ${new Date(bylaw.expiresAt).toLocaleDateString()}` : "";
         motion.outcomeNote = `Bylaw created: "${bylaw.title}"${domainLabel}${sunsetLabel} (id: ${bylaw.id}).`;
         try {
-            CommunityLogService.getInstance().write(
+            ActivityLogService.getInstance().write(
                 "bylaw-created",
                 `New bylaw adopted: "${bylaw.title}"${domainLabel}${sunsetLabel}.`,
                 { actorId: motion.proposerId, refId: bylaw.id },
@@ -105,7 +105,7 @@ effectRegistry.register("amend-bylaw", {
             : "";
         motion.outcomeNote = `Bylaw "${bylaw.title}"${titleNote} amended to v${bylaw.version}${renewNote} (id: ${bylaw.id}).`;
         try {
-            CommunityLogService.getInstance().write(
+            ActivityLogService.getInstance().write(
                 "bylaw-amended",
                 `Bylaw amended: "${bylaw.title}"${titleNote} now at v${bylaw.version}${renewNote}.`,
                 { actorId: motion.proposerId, refId: bylaw.id },

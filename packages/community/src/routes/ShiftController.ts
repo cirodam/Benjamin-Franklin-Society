@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
-import { ShiftService } from "../shift/ShiftService.js";
-import { Shift } from "../shift/Shift.js";
+import { ShiftService } from "@ecf/core";
+import { Shift } from "@ecf/core";
 import { PersonService } from "../person/PersonService.js";
 
 const svc = () => ShiftService.getInstance();

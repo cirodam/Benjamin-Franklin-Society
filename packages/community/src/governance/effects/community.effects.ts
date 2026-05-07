@@ -1,9 +1,6 @@
-import { effectRegistry } from "@ecf/core";
-import { LocationService } from "../../location/LocationService.js";
-import { Location } from "../../location/Location.js";
+import { effectRegistry, LocationService, Location, ActivityLogService } from "@ecf/core";
 import { AssociationService } from "../../association/AssociationService.js";
 import { Association } from "../../association/Association.js";
-import { CommunityLogService } from "../../log/CommunityLogService.js";
 
 // ── found-marketplace ─────────────────────────────────────────────────────────
 // Payload: { name, locationName, locationAddress, description? }
@@ -50,7 +47,7 @@ effectRegistry.register("found-marketplace", {
         });
 
         try {
-            CommunityLogService.getInstance().write(
+            ActivityLogService.getInstance().write(
                 "marketplace-founded",
                 `Marketplace "${name}" founded at "${locationName}".`,
                 { actorId: motion.proposerId },
@@ -98,7 +95,7 @@ effectRegistry.register("create-association", {
 
         motion.outcomeNote = `Association "${name}" (@${association.handle}) registered (id: ${association.id}).`;
         try {
-            CommunityLogService.getInstance().write(
+            ActivityLogService.getInstance().write(
                 "association-created",
                 `Association "${name}" (@${association.handle}) created via motion.`,
                 { actorId: motion.proposerId, refId: association.id },

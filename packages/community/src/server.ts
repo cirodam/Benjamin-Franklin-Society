@@ -9,18 +9,15 @@ import { clusterRoutes } from "./routes/clusterRoutes.js";
 import { PersonLoader } from "./person/PersonLoader.js";
 import { PersonService } from "./person/PersonService.js";
 import { Person } from "./person/Person.js";
-import { pushCensus } from "./census/CensusService.js";
 import { AssociationLoader } from "./association/AssociationLoader.js";
 import { AssociationService } from "./association/AssociationService.js";
-import { OrgLoader } from "./organization/OrgLoader.js";
-import { OrgService } from "./organization/OrgService.js";
 import { CalendarEventLoader } from "./calendar/CalendarEventLoader.js";
-import { CalendarService } from "./calendar/CalendarService.js";
+import { CalendarService } from "@ecf/core";
 import { LocationLoader } from "./location/LocationLoader.js";
-import { LocationService } from "./location/LocationService.js";
+import { LocationService } from "@ecf/core";
 import { RoleTypeLoader } from "./common/RoleTypeLoader.js";
 import { UnitTypeLoader } from "./common/domain/UnitTypeLoader.js";
-import { CommunityRoleLoader } from "./common/domain/CommunityRoleLoader.js";
+import { FunctionalRoleLoader } from "./common/domain/FunctionalRoleLoader.js";
 import { FunctionalUnitLoader } from "./common/domain/FunctionalUnitLoader.js";
 import { FunctionalDomainLoader } from "./common/domain/FunctionalDomainLoader.js";
 import { LeaderPoolLoader } from "./governance/LeaderPoolLoader.js";
@@ -32,28 +29,26 @@ import { AuthorityLoader } from "./governance/AuthorityLoader.js";
 import "./governance/effects/index.js"; // register built-in motion effect handlers
 import { DomainService } from "./DomainService.js";
 import { BankClient } from "@ecf/core";
-import { CentralBank } from "./domains/central_bank/CentralBank.js";
-import { CentralBankLoader } from "./domains/central_bank/CentralBankLoader.js";
-import { SocialInsuranceBank } from "./domains/social_insurance/SocialInsuranceBank.js";
-import { SocialInsuranceBankLoader } from "./domains/social_insurance/SocialInsuranceBankLoader.js";
-import { SocialInsuranceMemberLoader } from "./domains/social_insurance/SocialInsuranceMemberLoader.js";
+import { CentralBank } from "./domains/CentralBank.js";
+import { CentralBankLoader } from "./domains/CentralBankLoader.js";
+import { SocialInsuranceBank } from "./domains/SocialInsuranceBank.js";
+import { SocialInsuranceBankLoader } from "./domains/SocialInsuranceBankLoader.js";
+import { SocialInsuranceMemberLoader } from "./domains/SocialInsuranceMemberLoader.js";
 import communityRoutes from "./routes/communityRoutes.js";
 import { handleInboundMail } from "./routes/MailRelayController.js";
 import { handleBankTransferReceive } from "./routes/TransferController.js";
-import { CommunityTreasury } from "./domains/community_treasury/CommunityTreasury.js";
-import { CommunityTreasuryLoader } from "./domains/community_treasury/CommunityTreasuryLoader.js";
+import { CommunityTreasury } from "./domains/CommunityTreasury.js";
+import { CommunityTreasuryLoader } from "./domains/CommunityTreasuryLoader.js";
 import { FederationMembershipService } from "./FederationMembershipService.js";
 import { GsmModemProvider } from "./sms/GsmModemProvider.js";
 import { SmsService } from "./sms/SmsService.js";
 import { seedDomains } from "./bootstrap/seedDomains.js";
 import { registerMonetaryHandlers } from "./bootstrap/registerMonetaryHandlers.js";
-import { NominationLoader } from "./nomination/NominationLoader.js";
-import { NominationService } from "./nomination/NominationService.js";
 import { DocumentReconciler } from "./governance/DocumentReconciler.js";
 import { ShiftLoader } from "./shift/ShiftLoader.js";
-import { ShiftService } from "./shift/ShiftService.js";
-import { CommunityLogLoader } from "./log/CommunityLogLoader.js";
-import { CommunityLogService } from "./log/CommunityLogService.js";
+import { ShiftService } from "@ecf/core";
+import { ActivityLogLoader } from "./log/ActivityLogLoader.js";
+import { ActivityLogService } from "@ecf/core";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -194,10 +189,6 @@ async function main(): Promise<void> {
     const associationLoader = new AssociationLoader();
     AssociationService.getInstance().init(associationLoader);
 
-    // ── Organizations ──────────────────────────────────────────────────────
-    const orgLoader = new OrgLoader();
-    OrgService.getInstance().init(orgLoader);
-
     // ── Calendar ─────────────────────────────────────────────────────────────
     const calendarLoader = new CalendarEventLoader();
     CalendarService.getInstance().init(calendarLoader);
@@ -207,7 +198,7 @@ async function main(): Promise<void> {
     LocationService.getInstance().init(locationLoader);
 
     // ── Community log ───────────────────────────────────────────────────────
-    CommunityLogService.getInstance().init(new CommunityLogLoader());
+    ActivityLogService.getInstance().init(new ActivityLogLoader());
 
     // ── Motions ────────────────────────────────────────────────────────────
     const motionLoader = new MotionLoader();
@@ -244,7 +235,7 @@ async function main(): Promise<void> {
     domainSvc.init(
         new FunctionalDomainLoader(),
         new FunctionalUnitLoader(),
-        new CommunityRoleLoader(),
+        new FunctionalRoleLoader(),
         new LeaderPoolLoader(),
     );
 
@@ -256,10 +247,6 @@ async function main(): Promise<void> {
     domainSvc.initUnitTypes(new UnitTypeLoader());
 
     seedDomains(domainSvc);
-
-    // ── Nominations ────────────────────────────────────────────────────────
-    const nominationLoader = new NominationLoader();
-    NominationService.getInstance().init(nominationLoader);
 
     // ── Shifts ─────────────────────────────────────────────────────────────
     const shiftLoader = new ShiftLoader();
@@ -407,10 +394,10 @@ export type { PersonCredential, LanguageProficiency } from "./person/Person.js";
 export { PersonLoader } from "./person/PersonLoader.js";
 export { PersonService } from "./person/PersonService.js";
 export type { PersonPatch } from "./person/PersonService.js";
-export { CommunityRole } from "./common/CommunityRole.js";
-export { CommunityRoleLoader } from "./common/domain/CommunityRoleLoader.js";
-export { FunctionalUnit } from "./common/domain/FunctionalUnit.js";
-export { FunctionalDomain } from "./common/domain/FunctionalDomain.js";
+export { FunctionalRole } from "@ecf/core";
+export { FunctionalRoleLoader } from "./common/domain/FunctionalRoleLoader.js";
+export { FunctionalUnit } from "@ecf/core";
+export { FunctionalDomain } from "@ecf/core";
 export { FunctionalUnitLoader } from "./common/domain/FunctionalUnitLoader.js";
 export { FunctionalDomainLoader } from "./common/domain/FunctionalDomainLoader.js";
 export { UnitTemplateRegistry } from "./common/domain/UnitTemplateRegistry.js";

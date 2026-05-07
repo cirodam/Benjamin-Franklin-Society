@@ -1,18 +1,14 @@
-import { requirePersonCredential, requireAppPermission, AppSuspensionCache, requireNotAppSuspended } from "@ecf/core";
+import { requirePersonCredential, requireAppPermission } from "@ecf/core";
 import { getCommunityIdentity } from "../communityIdentity.js";
 
-const COMMUNITY_URL = process.env.COMMUNITY_URL ?? "http://localhost:3002";
-const suspensionCache = new AppSuspensionCache(COMMUNITY_URL);
-
 /** Verifies a valid community-issued PersonCredential. */
-export const requireAuth         = requirePersonCredential(getCommunityIdentity);
-export const requireNotSuspended = requireNotAppSuspended("bank", suspensionCache);
+export const requireAuth      = requirePersonCredential(getCommunityIdentity);
 
-/** Requires `bank: teller` permission (implies valid credential + not suspended). */
-export const requireTeller    = [requireAuth, requireNotSuspended, requireAppPermission("bank", "teller")];
+/** Requires `bank: teller` permission. */
+export const requireTeller    = [requireAuth, requireAppPermission("bank", "teller")];
 
-/** Requires `bank: admin` permission (implies valid credential + not suspended). */
-export const requireBankAdmin = [requireAuth, requireNotSuspended, requireAppPermission("bank", "admin")];
+/** Requires `bank: admin` permission. */
+export const requireBankAdmin = [requireAuth, requireAppPermission("bank", "admin")];
 
-/** Base auth + suspension check — use this for standard bank routes. */
-export const requireBankAccess = [requireAuth, requireNotSuspended];
+/** Base auth — use this for standard bank routes. */
+export const requireBankAccess = [requireAuth];

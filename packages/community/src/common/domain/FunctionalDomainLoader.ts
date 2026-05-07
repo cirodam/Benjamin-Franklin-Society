@@ -1,5 +1,5 @@
 import { CommunityDb } from "../../CommunityDb.js";
-import { FunctionalDomain, type BudgetItem } from "./FunctionalDomain.js";
+import { FunctionalDomain, type BudgetItem } from "@ecf/core";
 
 interface DomainStateRecord {
     id: string;

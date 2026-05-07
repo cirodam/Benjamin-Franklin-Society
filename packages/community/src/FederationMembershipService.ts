@@ -229,25 +229,4 @@ export class FederationMembershipService extends UpstreamMembershipService<Feder
         return this.record;
     }
 
-    async submitCensus(nullifiers: string[], memberCount: number): Promise<{ duplicates: string[] }> {        if (!this.record || this.record.status !== "approved") {
-            throw new Error("Community is not an approved federation member");
-        }
-
-        const node = NodeService.getInstance();
-        const ack  = await sendMessage<{ memberCount: number; nullifiers: string[] }, { duplicates: string[] }>(
-            this.record.federationUrl,
-            "governance",
-            "governance.census.submit",
-            { memberCount, nullifiers },
-            node.getSigner(),
-            node.getIdentity().id,
-            node.getIdentity().address,
-        );
-
-        if (ack.status === "rejected") {
-            throw new Error(`Census submission rejected: ${ack.error ?? "unknown error"}`);
-        }
-
-        return (ack.result ?? { duplicates: [] });
-    }
 }

@@ -4,7 +4,7 @@ import * as motions   from "./MotionController.js";
 import { DocumentLoader } from "../governance/DocumentLoader.js";
 import { AuthorityLoader } from "../governance/AuthorityLoader.js";
 import { PersonService } from "../person/PersonService.js";
-import { CommunityLogService } from "../log/CommunityLogService.js";
+import { ActivityLogService } from "@ecf/core";
 import { Assembly, AssemblyTerm, type AssemblyTermData, currentTermWindow, nextTermStartDate, parseDirective } from "@ecf/core";
 import type { DocumentDirective, GoverningDocument } from "@ecf/core";
 import { CommunityDb } from "../CommunityDb.js";
@@ -254,7 +254,7 @@ router.post("/assembly/draw", requireSteward, (req: Request, res: Response) => {
     db.prepare("INSERT INTO assembly_terms (id, data) VALUES (?, ?)").run(term.id, JSON.stringify(term.toData()));
 
     try {
-        CommunityLogService.getInstance().write(
+        ActivityLogService.getInstance().write(
             "assembly-drawn",
             `A new assembly of ${drawn.length} member${drawn.length === 1 ? "" : "s"} was drawn by sortition for the term beginning ${startDate}.`,
             { actorId: (req as any).person?.id ?? null },

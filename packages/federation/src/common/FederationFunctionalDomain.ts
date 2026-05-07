@@ -1,4 +1,4 @@
-import { BaseFunctionalDomain } from "@ecf/core";
+import { FunctionalDomain } from "@ecf/core";
 
 /**
  * Base class for all federation-level functional domains.
@@ -8,4 +8,4 @@ import { BaseFunctionalDomain } from "@ecf/core";
  * federation domains manage specific institutional entities directly rather
  * than template-instantiated units.
  */
-export abstract class FederationFunctionalDomain extends BaseFunctionalDomain {}
+export abstract class FederationFunctionalDomain extends FunctionalDomain {}

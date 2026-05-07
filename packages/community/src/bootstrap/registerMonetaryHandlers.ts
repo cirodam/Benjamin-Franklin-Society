@@ -2,13 +2,13 @@ import logger from "../logger.js";
 import { BankClient } from "@ecf/core";
 import { Person } from "../person/Person.js";
 import { PersonService } from "../person/PersonService.js";
-import { CentralBank } from "../domains/central_bank/CentralBank.js";
-import { SocialInsuranceBank } from "../domains/social_insurance/SocialInsuranceBank.js";
-import { CommunityTreasury } from "../domains/community_treasury/CommunityTreasury.js";
+import { CentralBank } from "../domains/CentralBank.js";
+import { SocialInsuranceBank } from "../domains/SocialInsuranceBank.js";
+import { CommunityTreasury } from "../domains/CommunityTreasury.js";
 import { DocumentLoader } from "../governance/DocumentLoader.js";
 const docLoader = new DocumentLoader();
 const cp = <T extends number | boolean>(key: string) => docLoader.getParam<T>("constitution", key);
-import { CommunityLogService } from "../log/CommunityLogService.js";
+import { ActivityLogService } from "@ecf/core";
 
 /**
  * Register all monetary event handlers and periodic schedulers.
@@ -21,7 +21,7 @@ export function registerMonetaryHandlers(bank: BankClient): void {
     // bank access is explicitly granted (see onPersonBankAccessGranted below).
     PersonService.getInstance().onPersonJoined(async (person) => {
         try {
-            CommunityLogService.getInstance().write("member-joined", `${person.firstName} ${person.lastName} joined the community`, { actorId: person.id, refId: person.id });
+            ActivityLogService.getInstance().write("member-joined", `${person.firstName} ${person.lastName} joined the community`, { actorId: person.id, refId: person.id });
         } catch { /* */ }
     });
 
@@ -126,7 +126,7 @@ export function registerMonetaryHandlers(bank: BankClient): void {
             // All balances are now zero — close the accounts
             await bank.closeAccounts(person.id);
             logger.info(`[community] closed bank accounts for @${person.handle}`);
-            try { CommunityLogService.getInstance().write("member-discharged", `${person.firstName} ${person.lastName} left the community`, { actorId: person.id, refId: person.id }); } catch { /* */ }
+            try { ActivityLogService.getInstance().write("member-discharged", `${person.firstName} ${person.lastName} left the community`, { actorId: person.id, refId: person.id }); } catch { /* */ }
         } catch (err) {
             logger.warn(`[community] discharge handler failed for @${person.handle}: ${(err as Error).message}`);
         }
@@ -189,7 +189,7 @@ export function registerMonetaryHandlers(bank: BankClient): void {
             [centralBank.issuanceAccountId, siBank.poolAccountId],
         ).then(({ count }) => {
             logger.info(`[community] community dues collected from ${count} accounts`);
-            try { CommunityLogService.getInstance().write("dues-collected", `Monthly dues collected from ${count} accounts`); } catch { /* */ }
+            try { ActivityLogService.getInstance().write("dues-collected", `Monthly dues collected from ${count} accounts`); } catch { /* */ }
         }).catch(err => {
             logger.error({ err }, "[community] community dues collection failed");
         });

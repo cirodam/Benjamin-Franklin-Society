@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { listVacancies, listPersons, createNomination } from "../lib/api.js";
+    import { listVacancies, listPersons, createMotion } from "../lib/api.js";
     import type { VacancyDto, PersonDto } from "../lib/api.js";
     import { session, currentPage, selectedRoleId } from "../lib/session.js";
 
@@ -58,7 +58,13 @@
         submitting = true;
         submitError = "";
         try {
-            await createNomination({ roleId: nominatingRole.roleId, nomineeHandle, statement });
+            await createMotion({
+                authorityId: "assembly",
+                kind:        "nominate-for-role",
+                title:       `Nominate @${nomineeHandle} for ${nominatingRole.roleTitle}`,
+                description: statement || `Motion to appoint @${nomineeHandle} to the role of ${nominatingRole.roleTitle}.`,
+                payload:     { roleId: nominatingRole.roleId, nomineeHandle, statement },
+            });
             submitSuccess = true;
             // Remove from local list so the vacancy disappears after a moment
             setTimeout(() => {

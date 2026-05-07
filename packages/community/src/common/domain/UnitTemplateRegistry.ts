@@ -1,4 +1,4 @@
-import { FunctionalUnit } from "./FunctionalUnit.js";
+import { FunctionalUnit } from "@ecf/core";
 
 type TemplateFactory = () => FunctionalUnit;
 

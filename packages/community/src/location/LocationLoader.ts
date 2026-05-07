@@ -1,5 +1,5 @@
 import { CommunityDb } from "../CommunityDb.js";
-import { Location } from "./Location.js";
+import { Location, type ILocationStore } from "@ecf/core";
 
 interface LocationRow {
     id: string; name: string; address: string;
@@ -7,7 +7,7 @@ interface LocationRow {
     description: string; created_at: string;
 }
 
-export class LocationLoader {
+export class LocationLoader implements ILocationStore {
     private get db() { return CommunityDb.getInstance().db; }
 
     save(loc: Location): void {

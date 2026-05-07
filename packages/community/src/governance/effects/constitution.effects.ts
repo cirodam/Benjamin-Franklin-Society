@@ -1,6 +1,6 @@
 import { effectRegistry } from "@ecf/core";
 import { DocumentLoader } from "../DocumentLoader.js";
-import { CommunityLogService } from "../../log/CommunityLogService.js";
+import { ActivityLogService } from "@ecf/core";
 
 // ── amend-document-parameter ──────────────────────────────────────────────────
 // Payload: { docId: string, parameter: string, newValue: number | boolean }
@@ -56,7 +56,7 @@ effectRegistry.register("set-dues-rate", {
         docs.amend("constitution", "communityDuesRate", rateDecimal, motion.id);
         motion.outcomeNote = `Community dues rate changed from ${oldPct}% to ${pct}% per month.`;
         try {
-            CommunityLogService.getInstance().write(
+            ActivityLogService.getInstance().write(
                 "constitution-amended",
                 `Dues rate set to ${pct}% per month (was ${oldPct}%).`,
                 { actorId: motion.proposerId },
@@ -87,7 +87,7 @@ effectRegistry.register("set-retirement-age", {
         docs.amend("constitution", "retirementAge", age, motion.id);
         motion.outcomeNote = `Retirement age changed from ${oldAge} to ${age} years.`;
         try {
-            CommunityLogService.getInstance().write(
+            ActivityLogService.getInstance().write(
                 "constitution-amended",
                 `Retirement age set to ${age} years (was ${oldAge}).`,
                 { actorId: motion.proposerId },
@@ -118,7 +118,7 @@ effectRegistry.register("set-retirement-payout", {
         docs.amend("constitution", "retirementPayoutRate", amount, motion.id);
         motion.outcomeNote = `Monthly retirement payout changed from ${oldAmount} to ${amount} kin/month.`;
         try {
-            CommunityLogService.getInstance().write(
+            ActivityLogService.getInstance().write(
                 "constitution-amended",
                 `Monthly retirement payout set to ${amount} kin/month (was ${oldAmount}).`,
                 { actorId: motion.proposerId },

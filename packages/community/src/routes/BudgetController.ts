@@ -1,13 +1,13 @@
 import { Request, Response } from "express";
-import { CentralBank } from "../domains/central_bank/CentralBank.js";
-import { SocialInsuranceBank } from "../domains/social_insurance/SocialInsuranceBank.js";
-import { CommunityTreasury } from "../domains/community_treasury/CommunityTreasury.js";
+import { CentralBank } from "../domains/CentralBank.js";
+import { SocialInsuranceBank } from "../domains/SocialInsuranceBank.js";
+import { CommunityTreasury } from "../domains/CommunityTreasury.js";
 import { DocumentLoader } from "../governance/DocumentLoader.js";
 import { DomainService } from "../DomainService.js";
 import { PersonService } from "../person/PersonService.js";
 import { nodeBankClient as bankClient } from "../nodeBankClient.js";
 import logger from "../logger.js";
-import { CommunityLogService } from "../log/CommunityLogService.js";
+import { ActivityLogService } from "@ecf/core";
 
 /**
  * GET /api/budget — public transparency endpoint.
@@ -107,7 +107,7 @@ export async function simulateStep(_req: Request, res: Response): Promise<void> 
             cp<number>("demurrageFloor"),
         );
         logger.info(`[simulate-step] demurrage applied to ${demurrageCount} accounts`);
-        try { CommunityLogService.getInstance().write("demurrage-run", `Demurrage applied to ${demurrageCount} accounts`); } catch { /* */ }
+        try { ActivityLogService.getInstance().write("demurrage-run", `Demurrage applied to ${demurrageCount} accounts`); } catch { /* */ }
 
         // 2. Dues
         const { count: duesCount } = await treasury.collectDues(

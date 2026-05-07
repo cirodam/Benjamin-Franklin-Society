@@ -6,12 +6,10 @@ import applicationRoutes from "./applicationRoutes.js";
 import domainRoutes from "./domainRoutes.js";
 import economicsRoutes from "./economicsRoutes.js";
 import associationRoutes from "./associationRoutes.js";
-import orgRoutes from "./orgRoutes.js";
 import calendarRoutes from "./calendarRoutes.js";
 import governanceRoutes from "./governanceRoutes.js";
-import nominationRoutes from "./nominationRoutes.js";
 import shiftRoutes from "./shiftRoutes.js";
-import { CommunityLogService } from "../log/CommunityLogService.js";
+import { ActivityLogService } from "@ecf/core";
 import { Request, Response } from "express";
 
 const router = Router();
@@ -28,7 +26,7 @@ router.post("/sms/inbound", sms.smsInbound);
 router.get("/log", (_req: Request, res: Response) => {
     const limit  = Math.min(200, Math.max(1, Number(_req.query["limit"] ?? 50)));
     const before = typeof _req.query["before"] === "string" ? _req.query["before"] : undefined;
-    res.json(CommunityLogService.getInstance().recent(limit, before));
+    res.json(ActivityLogService.getInstance().recent(limit, before));
 });
 
 router.use("/", personRoutes);
@@ -36,10 +34,8 @@ router.use("/", applicationRoutes);
 router.use("/", domainRoutes);
 router.use("/", economicsRoutes);
 router.use("/", associationRoutes);
-router.use("/", orgRoutes);
 router.use("/", calendarRoutes);
 router.use("/", governanceRoutes);
-router.use("/", nominationRoutes);
 router.use("/", shiftRoutes);
 
 export default router;

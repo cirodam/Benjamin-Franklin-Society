@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { getUnit, listRoles, listRoleTypes, listPersons, createRole, updateRole, deleteRole, createNomination, updateUnit } from "../lib/api.js";
+    import { getUnit, listRoles, listRoleTypes, listPersons, createRole, updateRole, deleteRole, createMotion, updateUnit } from "../lib/api.js";
     import type { UnitDto, RoleDto, RoleTypeDto, PersonDto, ScheduleSlot } from "../lib/api.js";
     import { currentPage, selectedUnitId, selectedDomainId } from "../lib/session.js";
 
@@ -236,10 +236,17 @@
 
     async function submitNomination(roleId: string) {
         if (!nomineeHandle) { nominationError = "Please select a nominee."; return; }
+        const role = roles.find(r => r.id === roleId);
         nominating = true;
         nominationError = "";
         try {
-            await createNomination({ roleId, nomineeHandle, statement: nominationStatement });
+            await createMotion({
+                authorityId: "assembly",
+                kind:        "nominate-for-role",
+                title:       `Nominate @${nomineeHandle} for ${role?.title ?? roleId}`,
+                description: nominationStatement || `Motion to appoint @${nomineeHandle} to the role of ${role?.title ?? roleId}.`,
+                payload:     { roleId, nomineeHandle, statement: nominationStatement },
+            });
             nominationSuccess = true;
             setTimeout(() => {
                 nominatingRoleId = null;

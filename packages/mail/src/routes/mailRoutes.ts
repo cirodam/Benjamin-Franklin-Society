@@ -27,7 +27,7 @@ import {
 
 const router = Router();
 
-// All mail routes require authentication + not suspended
+// All mail routes require authentication
 router.get(   "/persons",                ...requireMailAccess, listPersons);
 router.get(   "/threads",                ...requireMailAccess, listThreadsFiltered);
 router.get(   "/threads/:id",            ...requireMailAccess, getThread);

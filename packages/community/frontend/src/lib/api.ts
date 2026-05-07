@@ -1128,26 +1128,7 @@ export async function getNodePeers(): Promise<PeerRecordDto[]> {
     return res.json() as Promise<PeerRecordDto[]>;
 }
 
-// ── Nominations & Vacancies ───────────────────────────────────────────────────
-
-export type NominationStatus = "pending" | "accepted" | "confirmed" | "declined";
-
-export interface NominationDto {
-    id:               string;
-    createdAt:        string;
-    createdByHandle:  string | null;
-    type:             "role" | "pool";
-    roleId:           string;
-    unitId:           string;
-    domainId:         string;
-    poolId:           string | null;
-    poolName:         string | null;
-    nomineeHandle:    string | null;
-    statement:        string;
-    status:           NominationStatus;
-    resolvedAt:       string | null;
-    resolvedBy:       string | null;
-}
+// ── Vacancies & Expiring Roles ────────────────────────────────────────────────
 
 export interface VacancyDto {
     roleId:      string;
@@ -1185,7 +1166,7 @@ export interface RoleDto {
 }
 
 export async function listVacancies(): Promise<VacancyDto[]> {
-    const res = await fetch("/api/nominations/vacancies");
+    const res = await apiFetch("/api/roles/vacancies");
     if (!res.ok) throw new Error("Failed to load vacancies");
     return res.json() as Promise<VacancyDto[]>;
 }
@@ -1196,64 +1177,8 @@ export async function getRole(id: string): Promise<RoleDto> {
     return res.json() as Promise<RoleDto>;
 }
 
-export async function listNominations(): Promise<NominationDto[]> {
-    const res = await apiFetch("/api/nominations");
-    if (!res.ok) throw new Error("Failed to load nominations");
-    return res.json() as Promise<NominationDto[]>;
-}
-
-export async function createNomination(data: {
-    roleId:        string;
-    nomineeHandle: string;
-    statement:     string;
-}): Promise<NominationDto> {
-    const res = await apiFetch("/api/nominations", {
-        method: "POST",
-        body:   JSON.stringify(data),
-    });
-    if (!res.ok) {
-        const body = await res.json().catch(() => ({})) as { error?: string };
-        throw new Error(body.error ?? "Failed to submit nomination");
-    }
-    return res.json() as Promise<NominationDto>;
-}
-
-export async function createPoolNomination(data: {
-    poolId:        string;
-    nomineeHandle: string;
-    statement:     string;
-}): Promise<NominationDto> {
-    const res = await apiFetch("/api/nominations/pool", {
-        method: "POST",
-        body:   JSON.stringify(data),
-    });
-    if (!res.ok) {
-        const body = await res.json().catch(() => ({})) as { error?: string };
-        throw new Error(body.error ?? "Failed to submit nomination");
-    }
-    return res.json() as Promise<NominationDto>;
-}
-
-export async function confirmNomination(id: string): Promise<{ nomination: NominationDto; motionId?: string }> {
-    const res = await apiFetch(`/api/nominations/${encodeURIComponent(id)}/confirm`, { method: "PATCH" });
-    if (!res.ok) {
-        const body = await res.json().catch(() => ({})) as { error?: string };
-        throw new Error(body.error ?? "Failed to confirm nomination");
-    }
-    return res.json() as Promise<{ nomination: NominationDto; motionId?: string }>;
-}
-
-export async function declineNomination(id: string): Promise<NominationDto> {
-    const res = await apiFetch(`/api/nominations/${encodeURIComponent(id)}/decline`, { method: "PATCH" });
-    if (!res.ok) {
-        const body = await res.json().catch(() => ({})) as { error?: string };
-        throw new Error(body.error ?? "Failed to decline nomination");
-    }
-    return res.json() as Promise<NominationDto>;
-}
-
 export async function listExpiringRoles(days = 60): Promise<ExpiringRoleDto[]> {
-    const res = await apiFetch(`/api/nominations/expiring?days=${days}`);
+    const res = await apiFetch(`/api/roles/expiring?days=${days}`);
     if (!res.ok) throw new Error("Failed to load expiring roles");
     return res.json() as Promise<ExpiringRoleDto[]>;
 }
@@ -1581,9 +1506,9 @@ export async function deleteShift(id: string): Promise<void> {
     }
 }
 
-// ── Community Log ─────────────────────────────────────────────────────────────
+// ── Activity Log ──────────────────────────────────────────────────────────────
 
-export type CommunityLogType =
+export type ActivityLogType =
     | "motion-passed"
     | "motion-failed"
     | "motion-withdrawn"
@@ -1605,23 +1530,23 @@ export type CommunityLogType =
     | "unit-deployed"
     | "marketplace-founded";
 
-export interface CommunityLogEntry {
+export interface ActivityLogEntry {
     id:         string;
-    type:       CommunityLogType;
+    type:       ActivityLogType;
     summary:    string;
     actorId:    string | null;
     refId:      string | null;
     occurredAt: string;
 }
 
-export async function getCommunityLog(opts: { limit?: number; before?: string } = {}): Promise<CommunityLogEntry[]> {
+export async function getCommunityLog(opts: { limit?: number; before?: string } = {}): Promise<ActivityLogEntry[]> {
     const params = new URLSearchParams();
     if (opts.limit)  params.set("limit",  String(opts.limit));
     if (opts.before) params.set("before", opts.before);
     const url = `/api/log${params.size ? "?" + params.toString() : ""}`;
     const res = await fetch(url);
     if (!res.ok) throw new Error("Failed to load community log");
-    return res.json() as Promise<CommunityLogEntry[]>;
+    return res.json() as Promise<ActivityLogEntry[]>;
 }
 
 // ── Community Calendar ────────────────────────────────────────────────────────

@@ -1,6 +1,5 @@
 import { Request, Response } from "express";
-import { CalendarService, type CalendarOccurrence } from "../calendar/CalendarService.js";
-import { CalendarEvent } from "../calendar/CalendarEvent.js";
+import { CalendarService, type CalendarOccurrence, CalendarEvent } from "@ecf/core";
 import { PersonService } from "../person/PersonService.js";
 
 type AuthedRequest = Request & { personId?: string };

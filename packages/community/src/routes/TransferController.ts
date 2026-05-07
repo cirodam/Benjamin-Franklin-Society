@@ -1,6 +1,6 @@
 import { type Request, type Response } from "express";
 import { NodeService, sendMessage, type EcfMessage, parseAddress } from "@ecf/core";
-import { CentralBank } from "../domains/central_bank/CentralBank.js";
+import { CentralBank } from "../domains/CentralBank.js";
 import { FederationMembershipService } from "../FederationMembershipService.js";
 import { nodeBankClient as bank } from "../nodeBankClient.js";
 import { PersonService } from "../person/PersonService.js";

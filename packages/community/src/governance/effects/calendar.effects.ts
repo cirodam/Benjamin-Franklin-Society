@@ -1,5 +1,5 @@
 import { effectRegistry } from "@ecf/core";
-import { CalendarService } from "../../calendar/CalendarService.js";
+import { CalendarService } from "@ecf/core";
 
 // ── schedule-community-event ──────────────────────────────────────────────────
 // Payload: {

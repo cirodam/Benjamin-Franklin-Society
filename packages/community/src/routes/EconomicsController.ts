@@ -1,10 +1,24 @@
 import { Request, Response } from "express";
-import { CentralBank } from "../domains/central_bank/CentralBank.js";
-import { SocialInsuranceBank } from "../domains/social_insurance/SocialInsuranceBank.js";
+import { CentralBank } from "../domains/CentralBank.js";
+import { SocialInsuranceBank } from "../domains/SocialInsuranceBank.js";
 import { DocumentLoader } from "../governance/DocumentLoader.js";
 import { PersonService } from "../person/PersonService.js";
 import { nodeBankClient as bankClient } from "../nodeBankClient.js";
-import { HealthcareDomain } from "../domains/healthcare/HealthcareDomain.js";
+
+function healthcareStaffing(population: number) {
+    const recommend = (ratioPerPerson: number) => ({
+        recommended:    Math.max(1, Math.ceil(population / ratioPerPerson)),
+        ratioPerPerson,
+    });
+    return {
+        gp:           recommend(1_000),
+        nurse:        recommend(300),
+        dentist:      recommend(2_000),
+        mentalHealth: recommend(1_500),
+        paramedic:    recommend(1_000),
+        midwife:      recommend(1_000),
+    };
+}
 
 // GET /api/economics — public, no auth required.
 // Returns live monetary data: kin/kithe in circulation and SI pool stats.
@@ -63,7 +77,7 @@ export async function getEconomics(_req: Request, res: Response): Promise<void> 
             retirementAge:  retireAge,
             totalPersonYears,
         },
-        healthcareStaffing: HealthcareDomain.staffingHeuristic(total),
+        healthcareStaffing: healthcareStaffing(total),
     });
 }
 

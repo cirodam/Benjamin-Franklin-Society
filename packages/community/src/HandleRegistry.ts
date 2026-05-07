@@ -1,7 +1,7 @@
 /**
  * Community-wide handle namespace.
  *
- * Person, association, and organization handles all share one flat namespace
+ * Person and association handles share one flat namespace
  * per community so that any handle resolves unambiguously to a single entity.
  * Each service registers its handles here on init and checks availability
  * before creating new entities.
@@ -10,7 +10,7 @@ export class HandleRegistry {
     private static instance: HandleRegistry;
 
     /** handle → { type, id } */
-    private registry: Map<string, { type: "person" | "association" | "organization"; id: string }> = new Map();
+    private registry: Map<string, { type: "person" | "association"; id: string }> = new Map();
 
     private constructor() {}
 
@@ -25,7 +25,7 @@ export class HandleRegistry {
     }
 
     /** Register a handle. Throws if already taken by a different id. */
-    register(handle: string, type: "person" | "association" | "organization", id: string): void {
+    register(handle: string, type: "person" | "association", id: string): void {
         const existing = this.registry.get(handle);
         if (existing && existing.id !== id) {
             throw new Error(`Handle "${handle}" is already taken`);
@@ -39,7 +39,7 @@ export class HandleRegistry {
     }
 
     /** Look up who owns a handle. */
-    resolve(handle: string): { type: "person" | "association" | "organization"; id: string } | undefined {
+    resolve(handle: string): { type: "person" | "association"; id: string } | undefined {
         return this.registry.get(handle);
     }
 }

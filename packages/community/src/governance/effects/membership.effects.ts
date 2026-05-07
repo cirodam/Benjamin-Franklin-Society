@@ -1,7 +1,7 @@
 import { effectRegistry } from "@ecf/core";
 import { Person } from "../../person/Person.js";
 import { PersonService } from "../../person/PersonService.js";
-import { CommunityLogService } from "../../log/CommunityLogService.js";
+import { ActivityLogService } from "@ecf/core";
 
 // ── admit-member ──────────────────────────────────────────────────────────────
 // Payload: { firstName, lastName, birthDate, phone? }
@@ -45,7 +45,7 @@ effectRegistry.register("admit-member", {
 
         motion.outcomeNote = `${firstName} ${lastName} (@${handle}) added to the community.`;
         try {
-            CommunityLogService.getInstance().write(
+            ActivityLogService.getInstance().write(
                 "member-joined",
                 `${firstName} ${lastName} (@${handle}) added via motion.`,
                 { actorId: motion.proposerId },

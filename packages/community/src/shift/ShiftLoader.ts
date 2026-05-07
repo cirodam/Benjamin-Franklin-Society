@@ -1,5 +1,5 @@
 import { CommunityDb } from "../CommunityDb.js";
-import { Shift } from "./Shift.js";
+import { Shift, type IShiftStore } from "@ecf/core";
 
 interface ShiftRow {
     id: string; created_at: string; created_by: string;
@@ -7,7 +7,7 @@ interface ShiftRow {
     assigned_person_id: string | null; note: string | null;
 }
 
-export class ShiftLoader {
+export class ShiftLoader implements IShiftStore {
     private get db() { return CommunityDb.getInstance().db; }
 
     save(shift: Shift): void {

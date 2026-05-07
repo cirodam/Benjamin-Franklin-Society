@@ -19,7 +19,7 @@ export interface RoleTypeData {
  * occupational roles that functional units can draw from when staffing.
  * e.g. "Nurse", "Firefighter", "Teacher", "Doctor".
  *
- * Role types are the template; CommunityRole instances are the actual
+ * Role types are the template; FunctionalRole instances are the actual
  * slots within a specific unit that can be filled by members.
  */
 export class RoleType {

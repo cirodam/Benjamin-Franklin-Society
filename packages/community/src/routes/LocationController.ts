@@ -1,6 +1,5 @@
 import { Request, Response } from "express";
-import { LocationService } from "../location/LocationService.js";
-import { Location } from "../location/Location.js";
+import { LocationService, Location } from "@ecf/core";
 
 const svc = () => LocationService.getInstance();
 

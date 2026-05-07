@@ -1,7 +1,7 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
 import { verifyNodeSignature } from "@ecf/core";
 import { getCommunityIdentity } from "../communityIdentity.js";
-import { requireAuth, requireNotSuspended, requireTeller, requireBankAdmin, requireBankAccess } from "./middleware.js";
+import { requireAuth, requireTeller, requireBankAdmin, requireBankAccess } from "./middleware.js";
 import { createAccount, getAllAccounts, getAccounts, getAccountById, getTransactions, createTransfer, applyDemurrage, getMyAccounts, createMyAccount, deleteMyAccount, renameMyAccount, closeOwnerAccounts, adminGetAccounts, adminReverseTransaction, listPersons, sendTransferByHandle, getMyAccountByHandle, getMyAccountTransactions, deleteMyAccountByHandle, renameMyAccountByHandle } from "./BankController.js";
 
 const router = Router();
@@ -27,7 +27,7 @@ router.delete("/accounts/:ownerId/all",            requireNodeAuth, closeOwnerAc
 router.get(   "/account/:accountId",               requireAuthOrNodeSignature, getAccountById);
 router.post("/demurrage",                        requireAuthOrNodeSignature, applyDemurrage);
 
-// Member routes — require a valid community-issued credential + not suspended
+// Member routes — require a valid community-issued credential
 router.get(   "/me/accounts",                             ...requireBankAccess, getMyAccounts);
 router.post(  "/me/accounts",                             ...requireBankAccess, createMyAccount);
 router.delete("/me/accounts/:accountId",                  ...requireBankAccess, deleteMyAccount);

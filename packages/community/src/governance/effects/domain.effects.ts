@@ -2,10 +2,10 @@ import { effectRegistry } from "@ecf/core";
 import { DomainService } from "../../DomainService.js";
 import { RoleType } from "../../common/RoleType.js";
 import { UnitType } from "../../common/domain/UnitType.js";
-import { FunctionalUnit } from "../../common/domain/FunctionalUnit.js";
-import { CommunityRole } from "../../common/CommunityRole.js";
+import { FunctionalUnit } from "@ecf/core";
+import { FunctionalRole } from "@ecf/core";
 import { UnitTemplateRegistry } from "../../common/domain/UnitTemplateRegistry.js";
-import { CommunityLogService } from "../../log/CommunityLogService.js";
+import { ActivityLogService } from "@ecf/core";
 
 // ── add-role-type ─────────────────────────────────────────────────────────────
 // Payload: { title, description?, defaultKinPerMonth? }
@@ -35,7 +35,7 @@ effectRegistry.register("add-role-type", {
         svc.createRoleType(rt);
         motion.outcomeNote = `Role type "${title}" added to the role bank (id: ${rt.id}).`;
         try {
-            CommunityLogService.getInstance().write(
+            ActivityLogService.getInstance().write(
                 "role-type-added",
                 `Role type "${title}" added to the role bank.`,
                 { actorId: motion.proposerId, refId: rt.id },
@@ -65,7 +65,7 @@ effectRegistry.register("remove-role-type", {
         svc.deleteRoleType(roleTypeId);
         motion.outcomeNote = `Role type "${rt.title}" removed from the role bank.`;
         try {
-            CommunityLogService.getInstance().write(
+            ActivityLogService.getInstance().write(
                 "role-type-removed",
                 `Role type "${rt.title}" removed from the role bank.`,
                 { actorId: motion.proposerId },
@@ -102,7 +102,7 @@ effectRegistry.register("add-unit-type", {
         svc.createUnitType(ut);
         motion.outcomeNote = `Unit type "${label}" (${type}) added to the unit bank.`;
         try {
-            CommunityLogService.getInstance().write(
+            ActivityLogService.getInstance().write(
                 "unit-type-added",
                 `Unit type "${label}" (${type}) added to the unit bank.`,
                 { actorId: motion.proposerId, refId: ut.id },
@@ -136,7 +136,7 @@ effectRegistry.register("remove-unit-type", {
         svc.deleteUnitType(unitType);
         motion.outcomeNote = `Unit type "${ut.label}" (${unitType}) removed from the unit bank.`;
         try {
-            CommunityLogService.getInstance().write(
+            ActivityLogService.getInstance().write(
                 "unit-type-removed",
                 `Unit type "${ut.label}" removed from the unit bank.`,
                 { actorId: motion.proposerId },
@@ -203,7 +203,7 @@ effectRegistry.register("deploy-unit", {
                 const count = Math.max(1, Math.floor(slot.count ?? 1));
                 for (let i = 0; i < count; i++) {
                     svc.createRole(
-                        new CommunityRole(rt.title, rt.description, slot.kinPerMonth ?? rt.defaultKinPerMonth, rt.id),
+                        new FunctionalRole(rt.title, rt.description, slot.kinPerMonth ?? rt.defaultKinPerMonth, rt.id),
                         unit.id,
                     );
                     roleCount++;
@@ -214,7 +214,7 @@ effectRegistry.register("deploy-unit", {
         const roleNote = roleCount > 0 ? ` with ${roleCount} role slot(s)` : "";
         motion.outcomeNote = `Unit "${unit.name}" deployed in domain "${domain.name}"${roleNote} (id: ${unit.id}).`;
         try {
-            CommunityLogService.getInstance().write(
+            ActivityLogService.getInstance().write(
                 "unit-deployed",
                 `Functional unit "${unit.name}" deployed in ${domain.name}${roleNote}.`,
                 { actorId: motion.proposerId, refId: unit.id },

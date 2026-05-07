@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { getRole, listPersons, createNomination } from "../lib/api.js";
+    import { getRole, listPersons, createMotion } from "../lib/api.js";
     import type { RoleDto, PersonDto } from "../lib/api.js";
     import { currentPage, selectedRoleId } from "../lib/session.js";
 
@@ -45,7 +45,13 @@
         submitting = true;
         submitError = "";
         try {
-            await createNomination({ roleId: role.id, nomineeHandle, statement });
+            await createMotion({
+                authorityId: "assembly",
+                kind:        "nominate-for-role",
+                title:       `Nominate @${nomineeHandle} for ${role.title}`,
+                description: statement || `Motion to appoint @${nomineeHandle} to the role of ${role.title}.`,
+                payload:     { roleId: role.id, nomineeHandle, statement },
+            });
             submitSuccess = true;
         } catch (e) {
             submitError = e instanceof Error ? e.message : "Submission failed";

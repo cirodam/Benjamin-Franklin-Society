@@ -1,7 +1,6 @@
 import { Router } from "express";
 import { requireAuth, requireSteward } from "./middleware.js";
 import * as domains from "./DomainController.js";
-
 const router = Router();
 
 // Domains
@@ -27,6 +26,8 @@ router.get("/templates",   domains.listTemplates);
 router.get("/unit-types",  domains.listUnitTypes);
 
 // Roles
+router.get(   "/roles/vacancies",     domains.listVacancies);
+router.get(   "/roles/expiring",      domains.listExpiringRoles);
 router.get(   "/roles",     domains.listRoles);
 router.get(   "/roles/:id", domains.getRole);
 router.post(  "/roles",     ...requireSteward, domains.createRole);

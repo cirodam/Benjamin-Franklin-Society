@@ -1,14 +1,14 @@
 import { Request, Response } from "express";
 import { DomainService } from "../DomainService.js";
-import { FunctionalDomain } from "../common/domain/FunctionalDomain.js";
-import { FunctionalUnit } from "../common/domain/FunctionalUnit.js";
+import { FunctionalDomain } from "@ecf/core";
+import { FunctionalUnit } from "@ecf/core";
 import { UnitTemplateRegistry } from "../common/domain/UnitTemplateRegistry.js";
-import { CommunityRole } from "../common/CommunityRole.js";
+import { FunctionalRole } from "@ecf/core";
 import { RoleType } from "../common/RoleType.js";
 import { LeaderPool } from "@ecf/core";
-import type { BudgetCategory } from "../common/domain/FunctionalDomain.js";
+import type { BudgetCategory } from "@ecf/core";
 import { PersonService } from "../person/PersonService.js";
-import { LocationService } from "../location/LocationService.js";
+import { LocationService } from "@ecf/core";
 
 const svc = () => DomainService.getInstance();
 
@@ -189,7 +189,7 @@ export function createRole(req: Request, res: Response): void {
         res.status(400).json({ error: "Either roleTypeId or title is required" }); return;
     }
 
-    const role = new CommunityRole(resolvedTitle, resolvedDescription, resolvedKinPerMonth, resolvedRoleTypeId);
+    const role = new FunctionalRole(resolvedTitle, resolvedDescription, resolvedKinPerMonth, resolvedRoleTypeId);
     svc().createRole(role, unitId);
     res.status(201).json(toRoleDto(role));
 }
@@ -245,6 +245,64 @@ export function deleteRole(req: Request, res: Response): void {
     const deleted = svc().deleteRole(req.params.id as string);
     if (!deleted) { res.status(404).json({ error: "Role not found" }); return; }
     res.status(204).send();
+}
+
+// GET /api/roles/vacancies
+// Returns all roles that have no current member.
+export function listVacancies(_req: Request, res: Response): void {
+    const vacancies: object[] = [];
+    for (const domain of svc().getDomains()) {
+        for (const unitId of domain.unitIds) {
+            const unit = svc().getUnit(unitId);
+            if (!unit) continue;
+            for (const roleId of unit.roleIds) {
+                const role = svc().getRole(roleId);
+                if (!role || role.memberId) continue;
+                vacancies.push({
+                    roleId:      role.id,
+                    roleTitle:   role.title,
+                    kinPerMonth: role.kinPerMonth,
+                    unitId:      unit.id,
+                    unitName:    unit.name,
+                    domainId:    domain.id,
+                    domainName:  domain.name,
+                });
+            }
+        }
+    }
+    res.json(vacancies);
+}
+
+// GET /api/roles/expiring?days=60
+// Returns filled roles whose termEndDate falls within the given number of days.
+export function listExpiringRoles(req: Request, res: Response): void {
+    const days   = parseInt(req.query["days"] as string ?? "60", 10) || 60;
+    const cutoff = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+    const personSvc = PersonService.getInstance();
+    const results: object[] = [];
+    for (const domain of svc().getDomains()) {
+        for (const unitId of domain.unitIds) {
+            const unit = svc().getUnit(unitId);
+            if (!unit) continue;
+            for (const roleId of unit.roleIds) {
+                const role = svc().getRole(roleId);
+                if (!role || !role.memberId || !role.termEndDate) continue;
+                if (role.termEndDate > cutoff) continue;
+                results.push({
+                    roleId:       role.id,
+                    roleTitle:    role.title,
+                    memberHandle: personSvc.get(role.memberId)?.handle ?? null,
+                    termEndDate:  role.termEndDate.toISOString(),
+                    unitId:       unit.id,
+                    unitName:     unit.name,
+                    domainId:     domain.id,
+                    domainName:   domain.name,
+                });
+            }
+        }
+    }
+    results.sort((a: any, b: any) => a.termEndDate.localeCompare(b.termEndDate));
+    res.json(results);
 }
 
 // ── Role Types (the bank) ─────────────────────────────────────────────────────
@@ -422,7 +480,7 @@ function toUnitDto(u: FunctionalUnit) {
     };
 }
 
-function toRoleDto(r: CommunityRole) {
+function toRoleDto(r: FunctionalRole) {
     const ppl = PersonService.getInstance();
     return {
         id:             r.id,

@@ -16,7 +16,7 @@
         "reinstate-member":         { icon: "⊛",  desc: "Reinstate a previously suspended member." },
         "add-pool":                  { icon: "★",  desc: "Create a new named leadership pool or governing council." },
         "remove-pool":               { icon: "✕",  desc: "Dissolve an existing leadership pool." },
-        "accept-nomination":        { icon: "✓",  desc: "Formally confirm a pending leadership nomination." },
+        "nominate-for-role":        { icon: "✓",  desc: "Nominate someone to fill a vacant leadership role." },
         "schedule-community-event": { icon: "◷",  desc: "Put a recurring or one-time event on the community calendar." },
         "create-bylaw":             { icon: "§",  desc: "Adopt a new bylaw that governs community conduct or operations." },
         "amend-bylaw":              { icon: "✎",  desc: "Amend the title, preamble, or expiry of an existing bylaw." },

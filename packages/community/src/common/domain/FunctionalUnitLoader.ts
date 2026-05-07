@@ -1,5 +1,5 @@
 import { CommunityDb } from "../../CommunityDb.js";
-import { FunctionalUnit } from "./FunctionalUnit.js";
+import { FunctionalUnit } from "@ecf/core";
 
 export class FunctionalUnitLoader {
     private get db() { return CommunityDb.getInstance().db; }

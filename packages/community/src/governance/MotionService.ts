@@ -3,7 +3,7 @@ import { Motion, type MotionOutcome } from "@ecf/core";
 import { MotionLoader } from "./MotionLoader.js";
 import { AuthorityService } from "./AuthorityService.js";
 import { effectRegistry } from "@ecf/core";
-import { CommunityLogService } from "../log/CommunityLogService.js";
+import { ActivityLogService } from "@ecf/core";
 import { getVoteRule } from "@ecf/core";
 
 /** Fallback voting window when no vote rule is present. */
@@ -244,7 +244,7 @@ export class MotionService {
         if (m.outcome === "passed") effectRegistry.dispatch(m);
         this.loader.save(m);
         try {
-            const logSvc = CommunityLogService.getInstance();
+            const logSvc = ActivityLogService.getInstance();
             if (m.outcome === "passed") logSvc.write("motion-passed", `Motion passed: ${m.title}`, { refId: m.id });
             else                        logSvc.write("motion-failed", `Motion failed: ${m.title}`, { refId: m.id });
         } catch { /* log service may not be initialised in tests */ }
@@ -270,7 +270,7 @@ export class MotionService {
             }
             effectRegistry.dispatch(m);
             this.loader.save(m);
-            try { CommunityLogService.getInstance().write("motion-passed", `Motion passed: ${m.title}`, { refId: m.id }); } catch { /* */ }
+            try { ActivityLogService.getInstance().write("motion-passed", `Motion passed: ${m.title}`, { refId: m.id }); } catch { /* */ }
             return;
         }
 
@@ -283,7 +283,7 @@ export class MotionService {
                 m.resolvedAt = new Date().toISOString();
                 m.outcomeNote = `Failed: cannot reach ${needed}/${eligible} approvals needed. ${m.approvalCount} approvals, ${remaining} votes remaining.`;
                 this.loader.save(m);
-                try { CommunityLogService.getInstance().write("motion-failed", `Motion failed: ${m.title}`, { refId: m.id }); } catch { /* */ }
+                try { ActivityLogService.getInstance().write("motion-failed", `Motion failed: ${m.title}`, { refId: m.id }); } catch { /* */ }
             }
         }
         // majority-of-votes: denominator changes with each vote, no early rejection possible

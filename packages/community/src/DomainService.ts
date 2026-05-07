@@ -1,10 +1,10 @@
 import logger from "./logger.js";
-import { FunctionalDomain, type BudgetItem } from "./common/domain/FunctionalDomain.js";
-import { FunctionalUnit } from "./common/domain/FunctionalUnit.js";
+import { FunctionalDomain, type BudgetItem } from "@ecf/core";
+import { FunctionalUnit } from "@ecf/core";
 import { FunctionalDomainLoader } from "./common/domain/FunctionalDomainLoader.js";
 import { FunctionalUnitLoader } from "./common/domain/FunctionalUnitLoader.js";
-import { CommunityRole } from "./common/CommunityRole.js";
-import { CommunityRoleLoader } from "./common/domain/CommunityRoleLoader.js";
+import { FunctionalRole } from "@ecf/core";
+import { FunctionalRoleLoader } from "./common/domain/FunctionalRoleLoader.js";
 import { RoleType } from "./common/RoleType.js";
 import { RoleTypeLoader } from "./common/RoleTypeLoader.js";
 import { UnitType } from "./common/domain/UnitType.js";
@@ -27,14 +27,14 @@ export class DomainService {
 
     private domains: Map<string, FunctionalDomain> = new Map();
     private units:     Map<string, FunctionalUnit>   = new Map();
-    private roles:     Map<string, CommunityRole>    = new Map();
+    private roles:     Map<string, FunctionalRole>    = new Map();
     private roleTypes: Map<string, RoleType>         = new Map();
     private unitTypes: Map<string, UnitType>         = new Map();
     private pools:     Map<string, LeaderPool>       = new Map();
 
     private domainLoader:    FunctionalDomainLoader | null = null;
     private unitLoader:      FunctionalUnitLoader   | null = null;
-    private roleLoader:      CommunityRoleLoader    | null = null;
+    private roleLoader:      FunctionalRoleLoader    | null = null;
     private roleTypeLoader:  RoleTypeLoader         | null = null;
     private unitTypeLoader:  UnitTypeLoader         | null = null;
     private poolLoader:      LeaderPoolLoader       | null = null;
@@ -57,7 +57,7 @@ export class DomainService {
     init(
         domainLoader: FunctionalDomainLoader,
         unitLoader:   FunctionalUnitLoader,
-        roleLoader:   CommunityRoleLoader,
+        roleLoader:   FunctionalRoleLoader,
         poolLoader:   LeaderPoolLoader,
     ): void {
         this.domainLoader = domainLoader;
@@ -143,10 +143,10 @@ export class DomainService {
 
     // ── Roles (unit slots) ────────────────────────────────────────────────────
 
-    getRole(id: string): CommunityRole | undefined { return this.roles.get(id); }
-    getRoles(): CommunityRole[] { return Array.from(this.roles.values()); }
+    getRole(id: string): FunctionalRole | undefined { return this.roles.get(id); }
+    getRoles(): FunctionalRole[] { return Array.from(this.roles.values()); }
 
-    getRolesForUnit(unitId: string): CommunityRole[] {
+    getRolesForUnit(unitId: string): FunctionalRole[] {
         const unit = this.units.get(unitId);
         if (!unit) return [];
         return unit.roleIds.flatMap(id => {
@@ -155,7 +155,7 @@ export class DomainService {
         });
     }
 
-    createRole(role: CommunityRole, unitId: string): void {
+    createRole(role: FunctionalRole, unitId: string): void {
         this.assertInit();
         this.roles.set(role.id, role);
         this.roleLoader?.save(role);
@@ -166,7 +166,7 @@ export class DomainService {
         }
     }
 
-    saveRole(role: CommunityRole): void {
+    saveRole(role: FunctionalRole): void {
         this.roleLoader?.save(role);
     }
 

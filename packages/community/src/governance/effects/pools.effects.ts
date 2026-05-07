@@ -1,9 +1,8 @@
 import { effectRegistry, LeaderPool, currentTermWindow } from "@ecf/core";
 import { DocumentLoader } from "../DocumentLoader.js";
 import { DomainService } from "../../DomainService.js";
-import { NominationService } from "../../nomination/NominationService.js";
 import { PersonService } from "../../person/PersonService.js";
-import { CommunityLogService } from "../../log/CommunityLogService.js";
+import { ActivityLogService } from "@ecf/core";
 
 // ── add-pool ──────────────────────────────────────────────────────────────────
 // Payload: { name: string, description?: string }
@@ -49,47 +48,42 @@ effectRegistry.register("remove-pool", {
     },
 });
 
-// ── accept-nomination ─────────────────────────────────────────────────────────
-// Payload: { nominationId: string }
+// ── nominate-for-role ─────────────────────────────────────────────────────────
+// Payload: { roleId: string, nomineeHandle: string, statement?: string }
 
-effectRegistry.register("accept-nomination", {
-    label: "Accept nomination",
+effectRegistry.register("nominate-for-role", {
+    label: "Nominate for role",
     validate(raw) {
         if (typeof raw !== "object" || raw === null) return "Payload must be an object";
         const p = raw as Record<string, unknown>;
-        if (typeof p.nominationId !== "string" || !p.nominationId)
-            return "payload.nominationId must be a non-empty string";
+        if (typeof p.roleId !== "string" || !p.roleId)
+            return "payload.roleId must be a non-empty string";
+        if (typeof p.nomineeHandle !== "string" || !p.nomineeHandle)
+            return "payload.nomineeHandle must be a non-empty string";
         return null;
     },
     handler({ motion, payload }) {
-        const nominationId = payload.nominationId as string;
-        const domainSvc    = DomainService.getInstance();
+        const roleId        = payload.roleId        as string;
+        const nomineeHandle = payload.nomineeHandle as string;
+        const domainSvc     = DomainService.getInstance();
 
-        const n = NominationService.getInstance().confirm(nominationId, motion.id);
-        if (!n) throw new Error(`Nomination "${nominationId}" not found or already resolved`);
+        const role = domainSvc.getRole(roleId);
+        if (!role) throw new Error(`Role "${roleId}" not found`);
 
-        if (n.type === "pool" && n.poolId) {
-            const pool = domainSvc.getPool(n.poolId);
-            if (pool) {
-                pool.addPerson(n.nomineeId);
-                domainSvc.savePool(pool);
-            }
-        } else if (n.roleId) {
-            const role = domainSvc.getRole(n.roleId);
-            if (role) {
-                role.memberId      = n.nomineeId;
-                role.termStartDate = new Date();
-                const cp2 = (k: string) => new DocumentLoader().getParam("constitution", k) as number;
-                role.termEndDate   = currentTermWindow({
-                    startMonth: cp2("assemblyTermStartMonth"),
-                    startDay:   cp2("assemblyTermStartDay"),
-                    termMonths: cp2("assemblyTermMonths"),
-                }).end;
-                domainSvc.saveRole(role);
-            }
-        }
+        const person = PersonService.getInstance().getByHandle(nomineeHandle);
+        if (!person) throw new Error(`Person "@${nomineeHandle}" not found`);
 
-        motion.outcomeNote = `Nomination confirmed. Nominee added to ${n.type === "pool" ? "pool" : "role"}.`;
+        role.memberId      = person.id;
+        role.termStartDate = new Date();
+        const cp = (k: string) => new DocumentLoader().getParam("constitution", k) as number;
+        role.termEndDate   = currentTermWindow({
+            startMonth: cp("assemblyTermStartMonth"),
+            startDay:   cp("assemblyTermStartDay"),
+            termMonths: cp("assemblyTermMonths"),
+        }).end;
+        domainSvc.saveRole(role);
+
+        motion.outcomeNote = `${person.firstName} ${person.lastName} (@${nomineeHandle}) appointed to ${role.title}.`;
     },
 });
 
@@ -125,7 +119,7 @@ effectRegistry.register("add-pool-member", {
 
         motion.outcomeNote = `${person.firstName} ${person.lastName} added to pool "${pool.name}".`;
         try {
-            CommunityLogService.getInstance().write(
+            ActivityLogService.getInstance().write(
                 "pool-member-added",
                 `${person.firstName} ${person.lastName} added to pool "${pool.name}" via petition.`,
                 { actorId: motion.proposerId, refId: pool.id },

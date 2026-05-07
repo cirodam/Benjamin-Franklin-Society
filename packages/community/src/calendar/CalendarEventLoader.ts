@@ -1,7 +1,7 @@
 import { CommunityDb } from "../CommunityDb.js";
-import { CalendarEvent } from "./CalendarEvent.js";
+import { CalendarEvent, type ICalendarEventStore } from "@ecf/core";
 
-export class CalendarEventLoader {
+export class CalendarEventLoader implements ICalendarEventStore {
     private get db() { return CommunityDb.getInstance().db; }
 
     save(event: CalendarEvent): void {

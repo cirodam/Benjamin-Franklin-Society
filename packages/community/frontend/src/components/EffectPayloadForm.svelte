@@ -1,6 +1,6 @@
 <script lang="ts">
-    import { getConstitution, listPersons, listPools, listNominations, listBylaws, listRoleTypes, listUnitTypes, listDomains } from "../lib/api.js";
-    import type { GoverningDocumentDto, PersonDto, PoolDto, NominationDto, RoleTypeDto, UnitTypeDto, DomainDto } from "../lib/api.js";
+    import { getConstitution, listPersons, listPools, listVacancies, listBylaws, listRoleTypes, listUnitTypes, listDomains } from "../lib/api.js";
+    import type { GoverningDocumentDto, PersonDto, PoolDto, VacancyDto, RoleTypeDto, UnitTypeDto, DomainDto } from "../lib/api.js";
 
     let {
         kind,
@@ -14,7 +14,7 @@
     let constitution = $state<GoverningDocumentDto | null>(null);
     let persons      = $state([] as PersonDto[]);
     let pools        = $state([] as PoolDto[]);
-    let nominations  = $state([] as NominationDto[]);
+    let vacancies    = $state([] as VacancyDto[]);
     let bylaws       = $state([] as GoverningDocumentDto[]);
     let roleTypes    = $state([] as RoleTypeDto[]);
     let unitTypes    = $state([] as UnitTypeDto[]);
@@ -27,8 +27,9 @@
             listPersons().then(p => { persons = p; }).catch(() => {});
         } else if (kind === "remove-pool" && !pools.length) {
             listPools().then(p => { pools = p; }).catch(() => {});
-        } else if (kind === "accept-nomination" && !nominations.length) {
-            listNominations().then(ns => { nominations = ns.filter(n => n.status === "pending"); }).catch(() => {});
+        } else if (kind === "nominate-for-role") {
+            if (!vacancies.length) listVacancies().then(v => { vacancies = v; }).catch(() => {});
+            if (!persons.length)   listPersons().then(p => { persons = p; }).catch(() => {});
         } else if (kind === "amend-bylaw" && !bylaws.length) {
             listBylaws().then(b => { bylaws = b; }).catch(() => {});
         } else if (kind === "remove-role-type" && !roleTypes.length) {
@@ -53,7 +54,9 @@
     let roleName         = $state("");
     let roleDesc         = $state("");
     let selectedPoolId   = $state("");
-    let nominationId     = $state("");
+    let selectedNomineeHandle = $state("");
+    let nominateRoleId        = $state("");
+    let nominateStatement     = $state("");
 
     // set-dues-rate fields
     let duesRatePct = $state("");
@@ -181,8 +184,10 @@
             payload = name ? { name, ...(desc ? { description: desc } : {}) } : {};
         } else if (kind === "remove-pool") {
             payload = selectedPoolId ? { poolId: selectedPoolId } : {};
-        } else if (kind === "accept-nomination") {
-            payload = nominationId ? { nominationId } : {};
+        } else if (kind === "nominate-for-role") {
+            payload = (nominateRoleId && selectedNomineeHandle)
+                ? { roleId: nominateRoleId, nomineeHandle: selectedNomineeHandle, ...(nominateStatement.trim() ? { statement: nominateStatement.trim() } : {}) }
+                : {};
         } else if (kind === "schedule-community-event") {
             if (!evtTitle.trim() || !evtDate) { payload = {}; return; }
             const startAt = evtAllDay
@@ -389,16 +394,23 @@
             {/each}
         </select>
     {/if}
-{:else if kind === "accept-nomination"}
-    {#if !nominations.length}
-        <p class="hint">No pending nominations.</p>
+{:else if kind === "nominate-for-role"}
+    {#if !vacancies.length || !persons.length}
+        <p class="hint">Loading…</p>
     {:else}
-        <select class="input select" bind:value={nominationId}>
-            <option value="">— choose nomination —</option>
-            {#each nominations as n (n.id)}
-                <option value={n.id}>{n.poolName ?? n.roleId} — {n.nomineeId}</option>
+        <select class="input select" bind:value={nominateRoleId}>
+            <option value="">— choose vacant role —</option>
+            {#each vacancies as v (v.roleId)}
+                <option value={v.roleId}>{v.roleTitle} ({v.unitName})</option>
             {/each}
         </select>
+        <select class="input select" bind:value={selectedNomineeHandle}>
+            <option value="">— choose nominee —</option>
+            {#each persons as p (p.handle)}
+                <option value={p.handle}>{p.firstName} {p.lastName} (@{p.handle})</option>
+            {/each}
+        </select>
+        <textarea class="input textarea" bind:value={nominateStatement} placeholder="Why are they a good fit? (optional)" rows="2"></textarea>
     {/if}
 {:else if kind === "schedule-community-event"}
     <input class="input" type="text" placeholder="Event title *" bind:value={evtTitle} />

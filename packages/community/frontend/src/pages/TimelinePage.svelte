@@ -1,7 +1,7 @@
 <script lang="ts">
-    import { getCommunityLog, type CommunityLogEntry, type CommunityLogType } from "../lib/api.js";
+    import { getCommunityLog, type ActivityLogEntry, type ActivityLogType } from "../lib/api.js";
 
-    let entries  = $state<CommunityLogEntry[]>([]);
+    let entries  = $state<ActivityLogEntry[]>([]);
     let loading  = $state(true);
     let error    = $state("");
     let loadingMore = $state(false);
@@ -34,10 +34,10 @@
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 
-    type LogGroup = { date: string; entries: CommunityLogEntry[] };
+    type LogGroup = { date: string; entries: ActivityLogEntry[] };
 
-    function groupByDate(items: CommunityLogEntry[]): LogGroup[] {
-        const map = new Map<string, CommunityLogEntry[]>();
+    function groupByDate(items: ActivityLogEntry[]): LogGroup[] {
+        const map = new Map<string, ActivityLogEntry[]>();
         for (const e of items) {
             const d = e.occurredAt.slice(0, 10);
             if (!map.has(d)) map.set(d, []);
@@ -54,7 +54,7 @@
         return new Date(iso).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
     }
 
-    const ICON: Record<CommunityLogType, string> = {
+    const ICON: Record<ActivityLogType, string> = {
         "motion-passed":       "✓",
         "motion-failed":       "✗",
         "motion-withdrawn":    "↩",
@@ -77,7 +77,7 @@
         "marketplace-founded": "🏪",
     };
 
-    const COLOR: Record<CommunityLogType, string> = {
+    const COLOR: Record<ActivityLogType, string> = {
         "motion-passed":       "green",
         "motion-failed":       "red",
         "motion-withdrawn":    "gray",
