@@ -13,7 +13,7 @@
         if (found) return found.name;
         // Fallback: humanise built-in ids and pool:<uuid>
         if (authorityId === "assembly")   return "Assembly";
-        if (authorityId === "referendum")  return "The Community";
+        if (authorityId === "community")  return "The Community";
         if (authorityId.startsWith("pool:")) return "Leader Pool";
         return authorityId;
     });

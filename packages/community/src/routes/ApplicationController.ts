@@ -45,7 +45,7 @@ export function publicSubmitApplication(req: Request, res: Response): void {
 
     try {
         const motion = motionSvc().create({
-            authorityId:    "referendum",
+            authorityId:    "community",
             title:          `Membership application: ${fn} ${ln}`,
             description:    message.trim(),
             proposerId:     "public",

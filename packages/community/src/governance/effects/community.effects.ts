@@ -61,7 +61,7 @@ effectRegistry.register("found-marketplace", {
 
 effectRegistry.register("create-association", {
     label:       "Create an association",
-    authorityId: "referendum",
+    authorityId: "community",
     validate(raw) {
         if (typeof raw !== "object" || raw === null) return "Payload must be an object";
         const p = raw as Record<string, unknown>;

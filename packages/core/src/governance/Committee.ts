@@ -11,8 +11,12 @@ import { Authority } from "./Authority.js";
 export class Committee extends Authority {
     readonly kind = "committee" as const;
 
-    memberIds: string[] = [];
-    mandate:   string   = "";
+    memberIds: string[]       = [];
+    mandate:   string         = "";
+    /** The leader pool that chartered this committee, if any. */
+    poolId:    string | undefined = undefined;
+    /** True if this is a permanent standing committee; false if ad hoc. */
+    permanent: boolean        = false;
 
     constructor(
         id:                string,

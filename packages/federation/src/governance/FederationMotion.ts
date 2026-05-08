@@ -6,5 +6,5 @@ export type { MotionStage } from "@ecf/core";
 /** Extends the base MotionStage with federation clerk-body stages. */
 export type FederationMotionStage = import("@ecf/core").MotionStage | "proposed" | "discussed";
 export type FederationVoteThresholdKey = "thresholdSimpleMajority" | "thresholdSupermajority" | "thresholdNearConsensus" | "petition";
-export type FederationMotionBody = "referendum" | "assembly" | string;
+export type FederationMotionBody = "community" | "assembly" | string;
 

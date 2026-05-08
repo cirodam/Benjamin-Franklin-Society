@@ -33,7 +33,7 @@ export class AuthorityService {
         if (authority instanceof Assembly)   return authority.memberIds;
         if (authority instanceof Committee)  return authority.memberIds;
         if (authority instanceof LeaderPool) return authority.personIds;
-        if (authorityId === "referendum") {
+        if (authorityId === "community") {
             return PersonService.getInstance().getAll()
                 .filter(p => !p.disabled)
                 .map(p => p.id);

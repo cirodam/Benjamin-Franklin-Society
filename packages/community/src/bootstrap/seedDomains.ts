@@ -7,7 +7,6 @@ import { SocialInsuranceBank } from "../domains/SocialInsuranceBank.js";
 import { CommunityTreasury } from "../domains/CommunityTreasury.js";
 import { FunctionalUnit, FunctionalRole } from "@ecf/core";
 import { DocumentLoader } from "../governance/DocumentLoader.js";
-import { seedStructuralBylaws } from "./seedStructuralBylaws.js";
 import { reconcileStructure } from "./StructuralReconciler.js";
 
 /**
@@ -61,7 +60,7 @@ export function seedDomains(domainSvc: DomainService): void {
     domainSvc.registerDomain(SocialInsuranceBank.getInstance());
     if (SocialInsuranceBank.getInstance().unitIds.length === 0) {
         domainSvc.createUnit(
-            new FunctionalUnit("Retirement Office", "The central administrative office of the community retirement fund.", "office"),
+            new FunctionalUnit("Social Insurance Office", "The central administrative office of the community social insurance fund.", "office"),
             SocialInsuranceBank.getInstance().id,
         );
     }
@@ -80,11 +79,7 @@ export function seedDomains(domainSvc: DomainService): void {
         );
     }
 
-    // ── 3. Founding structural bylaws (first boot only) ───────────────────────
-
-    seedStructuralBylaws();
-
-    // ── 4. Reconcile desired state from governing documents ───────────────────
+    // ── 3. Reconcile desired state from governing documents ───────────────────
 
     const docLoader = new DocumentLoader();
     const allDocs   = docLoader.loadAll();

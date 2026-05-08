@@ -41,7 +41,7 @@
     async function load() {
         loading = true; error = "";
         try {
-            motions = await listMotions({ authorityId: "referendum" });
+            motions = await listMotions({ authorityId: "community" });
         } catch (e) {
             error = e instanceof Error ? e.message : "Failed to load referenda";
         } finally { loading = false; }
@@ -60,7 +60,7 @@
         creating = true; createError = "";
         try {
             const m = await createMotion({
-                authorityId:     "referendum",
+                authorityId:     "community",
                 title:           newTitle.trim(),
                 description:     newDesc.trim(),
                 kind:            selectedKind || null,
@@ -151,7 +151,7 @@
                     <label class="threshold-label" for="effect-select">Automated effect (optional)</label>
                     <select id="effect-select" class="input select" bind:value={selectedKind} onchange={() => { effectPayload = {}; }}>
                         <option value="">None</option>
-                        {#each effectKinds.filter(k => !k.bodyHint || k.bodyHint === "referendum") as k (k.kind)}
+                        {#each effectKinds.filter(k => !k.bodyHint || k.bodyHint === "community") as k (k.kind)}
                             <option value={k.kind}>{k.label}</option>
                         {/each}
                     </select>

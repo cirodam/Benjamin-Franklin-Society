@@ -32,9 +32,9 @@
 //
 //   pool.governs      <poolId> <domainId>
 //
-// Bylaws and ordinances may NOT carry authority.define or authority.grant
-// directives — those are reserved for constitution and charter documents.
-
+//   committee.define  <id> <poolId> <permanent> <voteRuleId>
+//     name = section title, mandate = section body
+//
 export type DirectiveVerb =
     | "authority.define"
     | "authority.grant"
@@ -43,7 +43,8 @@ export type DirectiveVerb =
     | "domain.define"
     | "domain.unit"
     | "pool.define"
-    | "pool.governs";
+    | "pool.governs"
+    | "committee.define";
 
 export interface DocumentDirective {
     verb: DirectiveVerb;
@@ -55,7 +56,7 @@ export interface DocumentDirective {
 
 export interface AuthorityDefineDirective {
     id:                string;
-    kind:              "assembly" | "committee" | "leader-pool" | "membership" | "referendum";
+    kind:              "assembly" | "committee" | "leader-pool" | "membership" | "community";
     defaultVoteRuleId: string;
     description:       string;
 }
@@ -110,13 +111,25 @@ export interface PoolGovernsDirective {
 }
 
 /**
+ * Declares that a permanent or ad hoc committee with the given stable ID should exist,
+ * chartered by the given pool.
+ * Name from section title; mandate from section body.
+ */
+export interface CommitteeDefineDirective {
+    id:                string;
+    poolId:            string;
+    permanent:         boolean;
+    defaultVoteRuleId: string;
+}
+
+/**
  * Parse a raw DocumentDirective into a typed shape.
  * Returns null if the directive is malformed.
  */
 export function parseDirective(
     d: DocumentDirective,
 ): AuthorityDefineDirective | AuthorityGrantDirective | ParameterDefineDirective
- | DomainDefineDirective | DomainUnitDirective | PoolDefineDirective | PoolGovernsDirective | null {
+ | DomainDefineDirective | DomainUnitDirective | PoolDefineDirective | PoolGovernsDirective | CommitteeDefineDirective | null {
     const a = d.args;
     switch (d.verb) {
         case "authority.define":
@@ -153,6 +166,9 @@ export function parseDirective(
         case "pool.governs":
             if (a.length < 2) return null;
             return { poolId: a[0], domainId: a[1] };
+        case "committee.define":
+            if (a.length < 4) return null;
+            return { id: a[0], poolId: a[1], permanent: a[2] === "true", defaultVoteRuleId: a[3] };
         case "document.require":
             return null; // not yet consumed by reconciler
     }
@@ -221,6 +237,12 @@ export interface GoverningDocument {
     id:          string;
     /** "constitution" | "bylaw" | "charter" | "ordinance" */
     type:        string;
+    /**
+     * Official bylaw number — a positive integer assigned when the bylaw is
+     * adopted. Primarily for bylaws; undefined for the constitution and charter.
+     * Used for display ("Bylaw No. 3") and ordering in the document list.
+     */
+    number?:     number;
     title:       string;
     preamble?:   string;
     articles:    DocumentArticle[];
@@ -272,12 +294,12 @@ export function extractParamKeys(body: string): string[] {
 /**
  * Collect all directives from all sections across a document, in article/section order.
  */
-export function collectDirectives(doc: GoverningDocument): { sectionId: string; directive: DocumentDirective }[] {
-    const result: { sectionId: string; directive: DocumentDirective }[] = [];
+export function collectDirectives(doc: GoverningDocument): { sectionId: string; sectionTitle?: string; directive: DocumentDirective }[] {
+    const result: { sectionId: string; sectionTitle?: string; directive: DocumentDirective }[] = [];
     for (const article of doc.articles) {
         for (const section of article.sections) {
             for (const directive of section.directives ?? []) {
-                result.push({ sectionId: section.id, directive });
+                result.push({ sectionId: section.id, sectionTitle: section.title, directive });
             }
         }
     }

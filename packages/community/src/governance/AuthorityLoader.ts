@@ -21,6 +21,8 @@ function deserialize(raw: string): Authority {
             );
             c.memberIds = (d["memberIds"] as string[] | undefined) ?? [];
             c.mandate   = (d["mandate"]   as string   | undefined) ?? "";
+            c.poolId    = (d["poolId"]    as string   | undefined);
+            c.permanent = (d["permanent"] as boolean  | undefined) ?? false;
             return c;
         }
         default:
@@ -44,7 +46,7 @@ function serialize(authority: Authority): string {
         return JSON.stringify({ ...base, memberIds: authority.memberIds, termStartedAt: authority.termStartedAt, termEndsAt: authority.termEndsAt });
     }
     if (authority instanceof Committee) {
-        return JSON.stringify({ ...base, memberIds: authority.memberIds, mandate: authority.mandate });
+        return JSON.stringify({ ...base, memberIds: authority.memberIds, mandate: authority.mandate, poolId: authority.poolId, permanent: authority.permanent });
     }
     return JSON.stringify(base);
 }
@@ -75,8 +77,14 @@ export class AuthorityLoader {
             .map(({ data }) => deserialize(data));
     }
 
+    /** Returns all Committee authorities chartered by the given pool. */
+    loadByPool(poolId: string): Committee[] {
+        return this.loadAll()
+            .filter((a): a is Committee => a instanceof Committee && a.poolId === poolId);
+    }
+
     delete(id: string): boolean {
-        if (id === "assembly" || id === "membership" || id === "referendum") {
+        if (id === "assembly" || id === "membership" || id === "community") {
             throw new Error(`Cannot delete built-in authority "${id}"`);
         }
         return this.db.prepare("DELETE FROM authorities WHERE id = ?").run(id).changes > 0;

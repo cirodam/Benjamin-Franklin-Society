@@ -155,30 +155,30 @@ async function main(): Promise<void> {
         }
     }
 
+    // ── Authorities bylaw (seed on first boot if missing) ─────────────────
+    {
+        const docs = new DocumentLoader();
+        if (!docs.load("authorities")) {
+            docs.save(importTemplate(loadTemplate("authorities")));
+            logger.info("Seeded default authorities bylaw");
+        }
+    }
+
+    // ── Institutions bylaw (seed on first boot if missing) ────────────────
+    {
+        const docs = new DocumentLoader();
+        if (!docs.load("institutions")) {
+            docs.save(importTemplate(loadTemplate("institutions")));
+            logger.info("Seeded default institutions bylaw");
+        }
+    }
+
     // ── Membership bylaw (seed on first boot if missing) ──────────────────
     {
         const docs = new DocumentLoader();
         if (!docs.load("membership")) {
             docs.save(importTemplate(loadTemplate("membership")));
             logger.info("Seeded default membership bylaw");
-        }
-    }
-
-    // ── Assembly & Voting bylaw (seed on first boot if missing) ───────────
-    {
-        const docs = new DocumentLoader();
-        if (!docs.load("assembly-voting")) {
-            docs.save(importTemplate(loadTemplate("assembly-voting")));
-            logger.info("Seeded default assembly and voting bylaw");
-        }
-    }
-
-    // ── Social Insurance bylaw (seed on first boot if missing) ────────────
-    {
-        const docs = new DocumentLoader();
-        if (!docs.load("social-insurance")) {
-            docs.save(importTemplate(loadTemplate("social-insurance")));
-            logger.info("Seeded default social insurance bylaw");
         }
     }
 

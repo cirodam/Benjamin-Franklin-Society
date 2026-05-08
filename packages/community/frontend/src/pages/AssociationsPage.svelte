@@ -66,7 +66,7 @@
         proposing = true;
         try {
             const m = await createMotion({
-                authorityId: "referendum",
+                authorityId: "community",
                 title:       proposeTitle.trim(),
                 description: proposeDesc.trim(),
                 kind:        "create-association",

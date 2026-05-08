@@ -66,6 +66,7 @@
     }
 
     function kindLabel(doc: GoverningDocumentDto): string {
+        if (doc.type === "bylaw" && doc.number != null) return `Bylaw No. ${doc.number}`;
         return doc.type.charAt(0).toUpperCase() + doc.type.slice(1);
     }
 
@@ -73,7 +74,10 @@
         const docs = [
             ...(charter      ? [{ doc: charter,      action: openCharter }]      : []),
             ...(constitution ? [{ doc: constitution,  action: openConstitution }] : []),
-            ...bylaws.map(b  => ({ doc: b,            action: () => openBylaw(b) })),
+            ...bylaws
+                .slice()
+                .sort((a, b) => (a.number ?? Infinity) - (b.number ?? Infinity))
+                .map(b  => ({ doc: b, action: () => openBylaw(b) })),
         ];
 
         const q = searchQuery.trim().toLowerCase();

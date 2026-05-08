@@ -38,7 +38,7 @@ export class SocialInsuranceBank extends FunctionalDomain {
     private memberLoader!: SocialInsuranceMemberLoader;
 
     private constructor() {
-        super("Retirement", "Community retirement pool. Members contribute throughout their working life and draw equal monthly payments in retirement.", SOCIAL_INSURANCE_DOMAIN_ID);
+        super("Social Insurance Fund", "Community social insurance pool. Members contribute throughout their working life and draw equal monthly payments in retirement or during periods of disability.", SOCIAL_INSURANCE_DOMAIN_ID);
     }
 
     static getInstance(): SocialInsuranceBank {

@@ -29,7 +29,7 @@ export class FederationMotionService {
         this.loader = loader;
         this.motions = new Map(loader.loadAll().map(m => [m.id, m]));
         for (const m of this.motions.values()) {
-            if (m.authorityId === "referendum" && m.stage === "voting" && m.votingClosesAt) {
+            if (m.authorityId === "community" && m.stage === "voting" && m.votingClosesAt) {
                 if (new Date() > new Date(m.votingClosesAt)) {
                     this.resolveByDeadline(m);
                 }
@@ -70,7 +70,7 @@ export class FederationMotionService {
         thresholdKey: FederationVoteThresholdKey = "thresholdSimpleMajority",
     ): FederationMotion {
         const m = this.require(motionId);
-        if (m.authorityId !== "referendum")           throw new Error("Only referendum motions use deliberation");
+        if (m.authorityId !== "community")           throw new Error("Only referendum motions use deliberation");
         if (m.stage !== "draft")       throw new Error("Motion is not a draft");
         if (m.proposerId !== callerId) throw new Error("Only the proposer can submit for deliberation");
 
@@ -88,7 +88,7 @@ export class FederationMotionService {
 
     openVoting(motionId: string): FederationMotion {
         const m = this.require(motionId);
-        if (m.authorityId !== "referendum")            throw new Error("Only referendum motions use this transition");
+        if (m.authorityId !== "community")            throw new Error("Only referendum motions use this transition");
         if (m.stage !== "deliberating") throw new Error("Motion is not in deliberation");
         if (m.pendingAmendmentIds.length > 0) throw new Error("Pending amendments must resolve first");
         if (m.votingOpensAt && new Date() < new Date(m.votingOpensAt)) {
@@ -111,7 +111,7 @@ export class FederationMotionService {
         vote:            "approve" | "reject" | "abstain",
     ): FederationMotion {
         const m = this.require(motionId);
-        if (m.authorityId !== "referendum") throw new Error("Use clerk actions for assembly/council motions");
+        if (m.authorityId !== "community") throw new Error("Use clerk actions for assembly/council motions");
         if (m.stage !== "voting") throw new Error("Motion is not in voting stage");
         if (m.votingClosesAt && new Date() > new Date(m.votingClosesAt)) {
             this.resolveByDeadline(m);
@@ -152,7 +152,7 @@ export class FederationMotionService {
 
     markDiscussed(motionId: string): FederationMotion {
         const m = this.require(motionId);
-        if (m.authorityId === "referendum") throw new Error("Use referendum lifecycle for referendum motions");
+        if (m.authorityId === "community") throw new Error("Use referendum lifecycle for referendum motions");
         if (m.stage !== ("proposed" as string)) throw new Error("Motion must be in 'proposed' stage");
         (m as { stage: string }).stage = "discussed";
         this.loader.save(m);
@@ -165,7 +165,7 @@ export class FederationMotionService {
         outcomeNote = "",
     ): FederationMotion {
         const m = this.require(motionId);
-        if (m.authorityId === "referendum") throw new Error("Use referendum lifecycle for referendum motions");
+        if (m.authorityId === "community") throw new Error("Use referendum lifecycle for referendum motions");
         if (m.stage === "resolved") throw new Error("Motion already resolved");
 
         m.outcome     = outcome;

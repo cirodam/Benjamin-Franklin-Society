@@ -4,12 +4,14 @@
  * Reads all non-expired governing documents, extracts their directives, and
  * syncs the runtime authorities table to match what the documents declare.
  *
- * Desired state  = authority.define + authority.grant directives in documents.
+ * Desired state  = authority.define + authority.grant directives across all active documents.
  * Observed state = rows in the `authorities` SQLite table.
  *
- * Only `constitution` and `charter` documents may carry `authority.define` or
- * `authority.grant` directives.  Bylaws and ordinances are silently skipped for
- * those verbs (a warning is logged if they try to declare them).
+ * The constitution is the first among equals — it carries no inherent superiority
+ * over other documents by virtue of its type. The community decides what its
+ * documents signify. Precedence on conflicts is determined by adoption date:
+ * the document adopted earliest wins. This reflects the community's own choices
+ * over time, not a type hierarchy baked into the software.
  *
  * The reconciler does NOT delete authorities it didn't create — removing an
  * authority requires an explicit `authority.define` removal followed by a
@@ -27,6 +29,7 @@ import {
     parseDirective,
     type AuthorityDefineDirective,
     type AuthorityGrantDirective,
+    type CommitteeDefineDirective,
 } from "@ecf/core";
 import { Authority, Assembly, Committee } from "@ecf/core";
 
@@ -116,12 +119,12 @@ export class DocumentReconciler {
         const now  = new Date();
         const docs = docLoader.loadAll();
 
-        // Process constitution first, then charter, then everything else.
-        const ordered = [
-            docs.find(d => d.id === "constitution"),
-            docs.find(d => d.id === "charter"),
-            ...docs.filter(d => d.id !== "constitution" && d.id !== "charter"),
-        ].filter((d): d is NonNullable<typeof d> => !!d);
+        // Oldest-first: the document adopted earliest wins on conflicts.
+        // The community decides what its documents signify — no type carries
+        // inherent precedence.
+        const ordered = [...docs].sort(
+            (a, b) => new Date(a.adoptedAt).getTime() - new Date(b.adoptedAt).getTime()
+        );
 
         // ── Rebuild desired-state cache ──────────────────────────────────────
         const newPowers:  Map<string, AuthorityPower[]> = new Map();
@@ -134,21 +137,9 @@ export class DocumentReconciler {
                 continue;
             }
 
-            const isConstitutionalDoc = doc.type === "constitution" || doc.type === "charter";
-            const entries             = collectDirectives(doc);
+            const entries = collectDirectives(doc);
 
-            for (const { sectionId, directive } of entries) {
-                // Enforce: authority.define / authority.grant only in constitution/charter
-                if (!isConstitutionalDoc &&
-                    (directive.verb === "authority.define" || directive.verb === "authority.grant")) {
-                    logger.warn(
-                        `[reconciler] document "${doc.id}" (type=${doc.type}) section ${sectionId} ` +
-                        `carries a "${directive.verb}" directive — only constitution and charter ` +
-                        `documents may declare or grant authority.  Directive ignored.`
-                    );
-                    continue;
-                }
-
+            for (const { sectionId, sectionTitle, directive } of entries) {
                 const parsed = parseDirective(directive);
                 if (!parsed) {
                     logger.warn(`[reconciler] malformed directive in "${doc.id}" §${sectionId}: ` +
@@ -159,6 +150,13 @@ export class DocumentReconciler {
                 if (directive.verb === "authority.define") {
                     this._applyAuthorityDefine(
                         parsed as AuthorityDefineDirective,
+                        authorityLoader,
+                        newDefined,
+                    );
+                } else if (directive.verb === "committee.define") {
+                    this._applyCommitteeDefine(
+                        parsed as CommitteeDefineDirective,
+                        { sectionId, sectionTitle },
                         authorityLoader,
                         newDefined,
                     );
@@ -248,6 +246,37 @@ export class DocumentReconciler {
         list.push({ action: d.action, voteRuleId: d.voteRuleId, sectionId, docId });
     }
 
+    private _applyCommitteeDefine(
+        d:       CommitteeDefineDirective,
+        ctx:     { sectionId: string; sectionTitle?: string },
+        loader:  AuthorityLoader,
+        defined: Set<string>,
+    ): void {
+        defined.add(d.id);
+
+        const existing = loader.load(d.id);
+        if (existing instanceof Committee) {
+            // Update mutable fields if the document changes them.
+            let dirty = false;
+            if (existing.poolId    !== d.poolId)            { existing.poolId    = d.poolId;            dirty = true; }
+            if (existing.permanent !== d.permanent)         { existing.permanent = d.permanent;         dirty = true; }
+            if (existing.defaultVoteRuleId !== d.defaultVoteRuleId) { (existing as unknown as Record<string,string>)["defaultVoteRuleId"] = d.defaultVoteRuleId; dirty = true; }
+            if (dirty) loader.save(existing);
+            return;
+        }
+        if (existing) {
+            logger.warn(`[reconciler] committee.define "${d.id}" collides with existing non-committee authority (kind=${existing.kind}) — skipping`);
+            return;
+        }
+
+        const name = ctx.sectionTitle ?? this._titleCase(d.id);
+        const committee = new Committee(d.id, name, d.defaultVoteRuleId);
+        committee.poolId    = d.poolId;
+        committee.permanent = d.permanent;
+        loader.save(committee);
+        logger.info(`[reconciler] created ${d.permanent ? "permanent" : "ad hoc"} committee "${name}" (${d.id}) chartered by pool "${d.poolId}"`);
+    }
+
     private _buildAuthority(d: AuthorityDefineDirective): Authority {
         switch (d.kind) {
             case "assembly":
@@ -255,7 +284,7 @@ export class DocumentReconciler {
             case "committee":
                 return new Committee(d.id, this._titleCase(d.id), d.defaultVoteRuleId, d.description);
             case "membership":
-            case "referendum":
+            case "community":
             case "leader-pool":
             default:
                 return new Authority(d.id, this._titleCase(d.id), d.defaultVoteRuleId, d.description, d.kind);

@@ -53,9 +53,12 @@ export class DocumentLoader {
         const expiresAt = (sunsetYears && sunsetYears > 0)
             ? new Date(Date.now() + sunsetYears * 365.25 * 24 * 3600 * 1000).toISOString()
             : null;
+        const existing = this.loadAll({ type: "bylaw" });
+        const nextNumber = existing.reduce((max, d) => Math.max(max, d.number ?? 0), 0) + 1;
         const doc: GoverningDocument = {
             id:          randomUUID(),
             type:        "bylaw",
+            number:      nextNumber,
             title:       title.trim(),
             preamble:    preamble?.trim() || undefined,
             articles:    [],

@@ -61,7 +61,7 @@
         try {
             const person = persons.find(p => p.id === petitionPersonId);
             const m = await createMotion({
-                authorityId: "referendum",
+                authorityId: "community",
                 title:       `Add ${person?.firstName} ${person?.lastName} to ${pool.name}`,
                 description: petitionDesc.trim() || `Petition to add @${person?.handle} to the ${pool.name} pool.`,
                 kind:        "add-pool-member",

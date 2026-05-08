@@ -7,7 +7,7 @@ import { ActivityLogService } from "@ecf/core";
 
 effectRegistry.register("amend-document-parameter", {
     label:       "Amend document parameter",
-    authorityId: "referendum",
+    authorityId: "community",
     validate(raw) {
         if (typeof raw !== "object" || raw === null) return "Payload must be an object";
         const p = raw as Record<string, unknown>;
@@ -40,7 +40,7 @@ effectRegistry.register("amend-document-parameter", {
 
 effectRegistry.register("set-dues-rate", {
     label:       "Set dues rate",
-    authorityId: "referendum",
+    authorityId: "community",
     validate(raw) {
         if (typeof raw !== "object" || raw === null) return "Payload must be an object";
         const p = raw as Record<string, unknown>;
@@ -70,7 +70,7 @@ effectRegistry.register("set-dues-rate", {
 
 effectRegistry.register("set-retirement-age", {
     label:       "Set retirement age",
-    authorityId: "referendum",
+    authorityId: "community",
     validate(raw) {
         if (typeof raw !== "object" || raw === null) return "Payload must be an object";
         const p = raw as Record<string, unknown>;
@@ -101,7 +101,7 @@ effectRegistry.register("set-retirement-age", {
 
 effectRegistry.register("set-retirement-payout", {
     label:       "Set retirement payout",
-    authorityId: "referendum",
+    authorityId: "community",
     validate(raw) {
         if (typeof raw !== "object" || raw === null) return "Payload must be an object";
         const p = raw as Record<string, unknown>;

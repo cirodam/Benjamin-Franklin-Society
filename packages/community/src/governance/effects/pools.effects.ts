@@ -93,7 +93,7 @@ effectRegistry.register("nominate-for-role", {
 
 effectRegistry.register("add-pool-member", {
     label:       "Add person to leader pool",
-    authorityId: "referendum",
+    authorityId: "community",
     validate(raw) {
         if (typeof raw !== "object" || raw === null) return "Payload must be an object";
         const p = raw as Record<string, unknown>;
